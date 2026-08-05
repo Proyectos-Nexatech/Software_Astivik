@@ -1,0 +1,276 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import Papa from "papaparse";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Search, Plus, UserCircle, Building2, HardHat, FileX, FileCheck, Upload, Download, Loader2 } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
+
+export default function PersonalOperativoPage() {
+  const supabase = createClient();
+  const [personal, setPersonal] = useState<any[]>([]);
+  const [contratistas, setContratistas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
+  const [form, setForm] = useState({ documento: "", nombre: "", cargo: "", empresa: "", estado_arl: "Al Día" });
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchData = async () => {
+    setLoading(true);
+
+    // 0. Autenticación y Perfil
+    const { data: { user } } = await supabase.auth.getUser();
+    let empresaFiltro = null;
+    
+    if (user) {
+      const { data: pData } = await supabase.from('perfiles_usuario').select('*, contratistas(nombre)').eq('id', user.id).single();
+      if (pData?.rol === 'lider_contratista' && pData?.contratistas?.nombre) {
+        empresaFiltro = pData.contratistas.nombre;
+      }
+    }
+
+    // 1. Fetch Trabajadores
+    let workersQuery = supabase.from('trabajadores').select('*').order('created_at', { ascending: false });
+    
+    if (empresaFiltro) {
+      const palabraClave = empresaFiltro.split(' ')[0];
+      workersQuery = workersQuery.ilike('empresa', `%${palabraClave}%`);
+    }
+
+    const { data: tData } = await workersQuery;
+    if (tData) setPersonal(tData);
+
+    // 2. Fetch Contratistas
+    const { data: cData } = await supabase.from('contratistas').select('nombre').order('nombre', { ascending: true });
+    if (cData) setContratistas(cData);
+    
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleCrearTrabajador = async () => {
+    if (form.nombre && form.documento && form.empresa) {
+      const { data, error } = await supabase.from('trabajadores').insert([{
+        documento: form.documento,
+        nombre: form.nombre,
+        cargo: form.cargo,
+        empresa: form.empresa,
+        estado_arl: form.estado_arl
+      }]).select();
+
+      if (!error && data) {
+        setPersonal([data[0], ...personal]);
+        setForm({ documento: "", nombre: "", cargo: "", empresa: "", estado_arl: "Al Día" });
+        setIsModalOpen(false);
+      } else {
+        alert("Error al guardar trabajador. Verifica que la cédula no esté duplicada.");
+      }
+    }
+  };
+
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async (results) => {
+          const nuevos = results.data.map((row: any) => ({
+            documento: row.Documento || row.documento || "N/A",
+            nombre: row.Nombre || row.nombre || "Sin Nombre",
+            cargo: row.Cargo || row.cargo || "General",
+            empresa: row.Contratista || row.contratista || "Astillero Interno",
+            estado_arl: row['Estado ARL'] || row.estadoARL || "Al Día"
+          }));
+          
+          const { data, error } = await supabase.from('trabajadores').insert(nuevos).select();
+          if (!error && data) {
+            setPersonal([...data, ...personal]);
+            setIsCsvModalOpen(false);
+          } else {
+            alert("Error en la carga masiva. Es posible que existan cédulas duplicadas.");
+          }
+        }
+      });
+    }
+  };
+
+  const csvTemplate = "data:text/csv;charset=utf-8,%EF%BB%BFDocumento;Nombre;Cargo;Contratista;Estado ARL%0A1045223112;Carlos Mendoza;Soldador 1A;Metalprest S.A.S;Al Día";
+
+  return (
+    <div className="space-y-8 max-w-[1200px] mx-auto pb-10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Directorio de Personal Operativo</h1>
+          <p className="text-slate-500 text-sm mt-1">Gestión de trabajadores en campo y asignación a contratistas.</p>
+        </div>
+        
+        <div className="flex gap-2">
+          {/* Modal CSV */}
+          <Dialog open={isCsvModalOpen} onOpenChange={setIsCsvModalOpen}>
+            <DialogTrigger render={<Button variant="outline" className="bg-white" />}>
+              <Upload className="w-4 h-4 mr-2" />
+              CARGA MASIVA CSV
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Carga Masiva de Personal</DialogTitle>
+                <DialogDescription>
+                  Sube un archivo .csv para agregar múltiples trabajadores al mismo tiempo.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-6 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-lg bg-slate-50">
+                <input 
+                  type="file" 
+                  accept=".csv" 
+                  className="hidden" 
+                  ref={fileInputRef}
+                  onChange={handleCsvUpload}
+                />
+                <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                  Seleccionar Archivo CSV
+                </Button>
+                <p className="text-xs text-slate-500 mt-2 text-center">Columnas esperadas (con punto y coma):<br/>Documento;Nombre;Cargo;Contratista;Estado ARL</p>
+              </div>
+              <DialogFooter>
+                <a href={csvTemplate} download="plantilla_personal.csv">
+                  <Button variant="link" size="sm" className="text-blue-600">
+                    <Download className="w-4 h-4 mr-1" /> Descargar Plantilla
+                  </Button>
+                </a>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Modal Individual */}
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <DialogTrigger render={<Button className="bg-slate-900 hover:bg-slate-800 text-white font-medium" />}>
+              <Plus className="w-4 h-4 mr-2" />
+              NUEVO TRABAJADOR
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Registrar Personal</DialogTitle>
+                <DialogDescription>
+                  Agrega un nuevo trabajador y vincúlalo a una empresa.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label>Nombre Completo</Label>
+                  <Input value={form.nombre} onChange={(e) => setForm({...form, nombre: e.target.value})} placeholder="Ej. Carlos Pérez" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>N° Documento</Label>
+                    <Input value={form.documento} onChange={(e) => setForm({...form, documento: e.target.value})} placeholder="C.C." />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Cargo / Especialidad</Label>
+                    <Input value={form.cargo} onChange={(e) => setForm({...form, cargo: e.target.value})} placeholder="Soldador" />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Empresa Contratista</Label>
+                  <Select value={form.empresa} onValueChange={(val) => setForm({...form, empresa: val})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccione una empresa" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contratistas.map(c => (
+                        <SelectItem key={c.nombre} value={c.nombre}>{c.nombre}</SelectItem>
+                      ))}
+                      <SelectItem value="Astillero Interno">Astillero Interno</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleCrearTrabajador} className="bg-slate-900 text-white">Guardar Trabajador</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      <Card className="border-slate-200 shadow-sm">
+        <CardHeader className="pb-4 border-b border-slate-100 flex flex-row items-center justify-between">
+          <CardTitle className="text-lg font-bold">Listado de Trabajadores</CardTitle>
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input placeholder="Buscar por cédula o nombre..." className="pl-9 h-9" />
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-12 flex justify-center items-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader className="bg-slate-50/50">
+                <TableRow>
+                  <TableHead className="font-semibold px-6">Documento</TableHead>
+                  <TableHead className="font-semibold">Nombre</TableHead>
+                  <TableHead className="font-semibold">Cargo</TableHead>
+                  <TableHead className="font-semibold">Contratista</TableHead>
+                  <TableHead className="font-semibold text-center">Estado ARL / Docs</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {personal.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium text-slate-600 px-6 py-4">{p.documento || "---"}</TableCell>
+                    <TableCell className="font-bold text-slate-900 flex items-center gap-2">
+                      <UserCircle className="w-4 h-4 text-slate-400" />
+                      {p.nombre}
+                    </TableCell>
+                    <TableCell>
+                      <span className="flex items-center gap-1.5 text-slate-600 text-sm">
+                        <HardHat className="w-4 h-4 text-slate-400" />
+                        {p.cargo || "---"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="flex items-center gap-1.5 text-slate-600 text-sm font-semibold">
+                        <Building2 className="w-4 h-4 text-slate-400" />
+                        {p.empresa}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {p.estado_arl === "Al Día" ? (
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100"><FileCheck className="w-3 h-3 mr-1" /> Al Día</Badge>
+                      ) : (
+                        <Badge className="bg-red-100 text-red-800 hover:bg-red-100"><FileX className="w-3 h-3 mr-1" /> Vencida</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {personal.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                      No hay trabajadores registrados en la base de datos. Agrega uno nuevo.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

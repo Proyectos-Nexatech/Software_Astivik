@@ -1,0 +1,447 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Papa from "papaparse";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ShieldCheck, ShieldAlert, XCircle, CheckCircle2, UserCircle, DoorOpen, Download, Search, LogOut, FileCheck } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
+
+// Required docs per cargo
+const requiredDocsByCargo: Record<string, string[]> = {
+  "Soldador 1A": ["ss", "examen", "alturas", "confinados", "soldadura"],
+  "Sandblaster": ["ss", "examen", "alturas", "confinados"],
+  "Electricista": ["ss", "examen", "alturas"]
+};
+
+export default function ControlAccesoPage() {
+  const supabase = createClient();
+  const [documentoBusqueda, setDocumentoBusqueda] = useState("");
+  const [trabajadorActual, setTrabajadorActual] = useState<any>(null);
+  const [estadoAcceso, setEstadoAcceso] = useState<{ tipo: string, mensaje: string, detalles: string[] } | null>(null);
+  
+  const [proyectos, setProyectos] = useState<any[]>([]);
+  const [proyectoSeleccionado, setProyectoSeleccionado] = useState<string>("");
+  const [registrosRecientes, setRegistrosRecientes] = useState<any[]>([]);
+  const [vigenciasConfig, setVigenciasConfig] = useState<Record<string, number>>({});
+
+  // Report State
+  const [reportData, setReportData] = useState<any[]>([]);
+  const [filtroRango, setFiltroRango] = useState("hoy");
+  const [filtroEmpresa, setFiltroEmpresa] = useState("todas");
+  const [filtroProyecto, setFiltroProyecto] = useState("todos");
+  const [empresasUnicas, setEmpresasUnicas] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  useEffect(() => {
+    generarReporte();
+  }, [filtroRango, filtroEmpresa, filtroProyecto]); // Auto-refresh report when filters change
+
+  const fetchInitialData = async () => {
+    // 1. Fetch Proyectos
+    const { data: pData } = await supabase.from('proyectos').select('*').eq('estado', 'Activo');
+    if (pData) setProyectos(pData);
+
+    // 2. Fetch Vigencias
+    const { data: configData } = await supabase.from('configuracion_vigencias').select('*');
+    const vConfig: Record<string, number> = { ss: 1, examen: 12, alturas: 12, confinados: 12, soldadura: 6 };
+    if (configData) {
+      configData.forEach((row: any) => { vConfig[row.tipo_documento] = row.periodo_meses; });
+    }
+    setVigenciasConfig(vConfig);
+
+    // 3. Fetch latest logs
+    fetchRegistrosRecientes();
+
+    // 4. Fetch Empresas for Filter
+    const { data: cData } = await supabase.from('contratistas').select('nombre');
+    if (cData) setEmpresasUnicas(cData.map(c => c.nombre));
+  };
+
+  const fetchRegistrosRecientes = async () => {
+    const { data } = await supabase
+      .from('registros_acceso')
+      .select('*, trabajadores(nombre, empresa, documento), proyectos(nombre)')
+      .order('fecha_hora', { ascending: false })
+      .limit(10);
+    if (data) setRegistrosRecientes(data);
+  };
+
+  const calculateEstado = (dateStr: string) => {
+    if (!dateStr) return "Faltante";
+    const todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
+    const expiryDate = new Date(dateStr + 'T00:00:00');
+    const diffDays = Math.ceil((expiryDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return "Vencido";
+    if (diffDays <= 30) return "Por Vencer";
+    return "Vigente";
+  };
+
+  const handleBuscar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!documentoBusqueda.trim()) return;
+
+    setEstadoAcceso(null);
+    setTrabajadorActual(null);
+
+    // 1. Buscar trabajador
+    const { data: tData, error: tError } = await supabase.from('trabajadores').select('*').eq('documento', documentoBusqueda.trim()).single();
+    
+    if (tError || !tData) {
+      setEstadoAcceso({ tipo: "ERROR", mensaje: "Trabajador No Encontrado", detalles: ["Verifique el número de documento ingresado."] });
+      return;
+    }
+
+    setTrabajadorActual(tData);
+
+    // 2. Buscar documentos
+    const { data: docsData } = await supabase.from('documentos_hse').select('*').eq('trabajador_id', tData.id);
+    
+    // 3. Evaluar documentos requeridos según cargo
+    const requiredKeys = requiredDocsByCargo[tData.cargo] || ["ss", "examen"];
+    const detallesVencidos: string[] = [];
+    
+    requiredKeys.forEach(key => {
+      const doc = docsData?.find(d => d.tipo_documento === key);
+      const estado = doc ? calculateEstado(doc.fecha_vencimiento) : "Faltante";
+      
+      if (estado === "Faltante" || estado === "Vencido") {
+        detallesVencidos.push(`Falta o está vencido: ${key.toUpperCase()}`);
+      }
+    });
+
+    if (detallesVencidos.length > 0) {
+      setEstadoAcceso({ tipo: "BLOQUEADO", mensaje: "ACCESO DENEGADO", detalles: detallesVencidos });
+    } else {
+      setEstadoAcceso({ tipo: "PERMITIDO", mensaje: "ACCESO AUTORIZADO", detalles: ["Todos los documentos HSE están al día."] });
+    }
+  };
+
+  const registrarAcceso = async (tipo: 'ENTRADA' | 'SALIDA') => {
+    if (!trabajadorActual) return;
+    
+    const { error } = await supabase.from('registros_acceso').insert([{
+      trabajador_id: trabajadorActual.id,
+      tipo: tipo,
+      proyecto_id: proyectoSeleccionado && proyectoSeleccionado !== "none" ? proyectoSeleccionado : null
+    }]);
+
+    if (!error) {
+      setDocumentoBusqueda("");
+      setTrabajadorActual(null);
+      setEstadoAcceso(null);
+      fetchRegistrosRecientes();
+      generarReporte(); // Update report silently
+    } else {
+      alert("Error al guardar el registro.");
+    }
+  };
+
+  // ----- REPORT LOGIC -----
+  const generarReporte = async () => {
+    let query = supabase
+      .from('registros_acceso')
+      .select('*, trabajadores!inner(nombre, empresa, documento), proyectos(nombre)')
+      .order('fecha_hora', { ascending: false });
+
+    // Rango
+    const now = new Date();
+    if (filtroRango === 'hoy') {
+      const today = new Date(now.setHours(0,0,0,0)).toISOString();
+      query = query.gte('fecha_hora', today);
+    } else if (filtroRango === 'semana') {
+      const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      query = query.gte('fecha_hora', lastWeek);
+    } else if (filtroRango === 'mes') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      query = query.gte('fecha_hora', startOfMonth);
+    }
+
+    // Empresa (using standard Supabase syntax for related table filtering)
+    if (filtroEmpresa !== 'todas') {
+      query = query.eq('trabajadores.empresa', filtroEmpresa);
+    }
+
+    // Proyecto
+    if (filtroProyecto !== 'todos') {
+      if (filtroProyecto === 'general') {
+        query = query.is('proyecto_id', null);
+      } else {
+        query = query.eq('proyecto_id', filtroProyecto);
+      }
+    }
+
+    const { data, error } = await query;
+    if (data) {
+      setReportData(data);
+    }
+  };
+
+  const exportarCsv = () => {
+    if (reportData.length === 0) return alert("No hay datos para exportar");
+    
+    const exportFormat = reportData.map(r => ({
+      Fecha: new Date(r.fecha_hora).toLocaleDateString(),
+      Hora: new Date(r.fecha_hora).toLocaleTimeString(),
+      Documento: r.trabajadores?.documento,
+      Trabajador: r.trabajadores?.nombre,
+      Empresa: r.trabajadores?.empresa,
+      Tipo: r.tipo,
+      Proyecto: r.proyectos?.nombre || 'General'
+    }));
+
+    const csv = Papa.unparse(exportFormat);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `reporte_accesos_${filtroRango}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="space-y-8 max-w-[1200px] mx-auto pb-10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Control de Acceso (Torniquete)</h1>
+          <p className="text-slate-500 text-sm mt-1">Gestión de ingresos a planta y validación automática de HSE.</p>
+        </div>
+      </div>
+
+      <Tabs defaultValue="registro" className="space-y-6">
+        <TabsList className="bg-slate-100">
+          <TabsTrigger value="registro" className="font-semibold"><DoorOpen className="w-4 h-4 mr-2" /> Registro en Vivo</TabsTrigger>
+          <TabsTrigger value="reportes" className="font-semibold"><FileCheck className="w-4 h-4 mr-2" /> Reportes de Tránsito</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="registro" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="border-slate-200 shadow-sm border-t-4 border-t-blue-600">
+              <CardHeader className="bg-slate-50 border-b border-slate-100 pb-4">
+                <CardTitle className="text-lg flex items-center gap-2"><Search className="w-5 h-5 text-blue-600"/> Identificación</CardTitle>
+                <CardDescription>Escanee o digite la cédula del trabajador.</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <form onSubmit={handleBuscar} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="doc" className="text-sm font-bold text-slate-700">N° Documento (Cédula)</Label>
+                    <Input 
+                      id="doc"
+                      placeholder="Ej. 1045223112" 
+                      value={documentoBusqueda}
+                      onChange={(e) => setDocumentoBusqueda(e.target.value)}
+                      className="h-12 text-lg font-bold text-center tracking-wider"
+                      autoFocus
+                    />
+                  </div>
+                  <Button type="submit" className="w-full h-12 text-md font-bold bg-slate-900 text-white hover:bg-slate-800">
+                    Verificar Estado
+                  </Button>
+                </form>
+
+                {estadoAcceso && (
+                  <div className={`mt-6 p-4 rounded-lg border-2 ${estadoAcceso.tipo === 'PERMITIDO' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                    <div className="flex items-center gap-3 mb-2">
+                      {estadoAcceso.tipo === 'PERMITIDO' ? <CheckCircle2 className="w-8 h-8 text-green-600"/> : <XCircle className="w-8 h-8 text-red-600"/>}
+                      <h3 className={`text-xl font-black ${estadoAcceso.tipo === 'PERMITIDO' ? 'text-green-700' : 'text-red-700'}`}>{estadoAcceso.mensaje}</h3>
+                    </div>
+                    {trabajadorActual && (
+                      <div className="mb-3 text-sm font-medium text-slate-700">
+                        <p>{trabajadorActual.nombre} • <span className="font-bold">{trabajadorActual.empresa}</span></p>
+                        <p className="text-xs text-slate-500">{trabajadorActual.cargo}</p>
+                      </div>
+                    )}
+                    <ul className="text-sm space-y-1 mb-4 text-slate-600">
+                      {estadoAcceso.detalles.map((d, i) => <li key={i} className="flex items-center gap-2">• {d}</li>)}
+                    </ul>
+
+                    {estadoAcceso.tipo === 'PERMITIDO' && (
+                      <div className="space-y-4 pt-4 border-t border-green-200">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold text-green-800 uppercase tracking-wider">Proyecto Destino (Opcional)</Label>
+                          <Select value={proyectoSeleccionado} onValueChange={setProyectoSeleccionado}>
+                            <SelectTrigger className="bg-white border-green-200 focus:ring-green-500">
+                              <SelectValue placeholder="Ninguno en particular" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Ninguno / General</SelectItem>
+                              {proyectos.map(p => (
+                                <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button onClick={() => registrarAcceso('ENTRADA')} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12">
+                            <DoorOpen className="w-5 h-5 mr-2" /> REGISTRAR ENTRADA
+                          </Button>
+                          <Button onClick={() => registrarAcceso('SALIDA')} variant="outline" className="w-full text-slate-700 font-bold h-12 border-slate-300">
+                            <LogOut className="w-5 h-5 mr-2" /> MARCAR SALIDA
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {estadoAcceso.tipo === 'BLOQUEADO' && trabajadorActual && (
+                      <Button onClick={() => registrarAcceso('SALIDA')} variant="outline" className="w-full text-slate-700 font-bold h-12 border-red-200 bg-white hover:bg-red-50">
+                        <LogOut className="w-5 h-5 mr-2" /> SÓLO MARCAR SALIDA
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200 shadow-sm">
+              <CardHeader className="bg-slate-50 border-b border-slate-100 pb-4">
+                <CardTitle className="text-lg">Tránsitos Recientes</CardTitle>
+                <CardDescription>Últimos registros de entrada y salida.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Hora</TableHead>
+                      <TableHead>Personal</TableHead>
+                      <TableHead className="text-center">Tipo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {registrosRecientes.map(r => (
+                      <TableRow key={r.id}>
+                        <TableCell className="text-xs font-medium text-slate-500">
+                          {new Date(r.fecha_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-bold text-slate-800 text-sm">{r.trabajadores?.nombre}</p>
+                          <p className="text-[10px] text-slate-500">{r.trabajadores?.empresa}</p>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge className={r.tipo === 'ENTRADA' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}>
+                            {r.tipo}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {registrosRecientes.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-slate-500 py-6 text-sm">Sin registros recientes hoy.</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="reportes">
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader className="bg-slate-50 border-b border-slate-100">
+              <CardTitle>Reportes de Tránsito</CardTitle>
+              <CardDescription>Filtra y exporta las entradas y salidas de la planta.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <Select value={filtroRango} onValueChange={setFiltroRango}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Rango de Fechas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hoy">Hoy</SelectItem>
+                    <SelectItem value="semana">Últimos 7 días</SelectItem>
+                    <SelectItem value="mes">Este Mes</SelectItem>
+                    <SelectItem value="todo">Histórico Completo</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Select value={filtroEmpresa} onValueChange={setFiltroEmpresa}>
+                  <SelectTrigger className="w-full sm:w-[220px]">
+                    <SelectValue placeholder="Filtrar por Empresa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas las Empresas</SelectItem>
+                    {empresasUnicas.map(e => (
+                      <SelectItem key={e} value={e}>{e}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={filtroProyecto} onValueChange={setFiltroProyecto}>
+                  <SelectTrigger className="w-full sm:w-[220px]">
+                    <SelectValue placeholder="Filtrar por Proyecto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos los Destinos</SelectItem>
+                    <SelectItem value="general">Planta General (Sin Proyecto)</SelectItem>
+                    {proyectos.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Button variant="outline" className="ml-auto bg-slate-900 text-white hover:bg-slate-800" onClick={exportarCsv}>
+                  <Download className="w-4 h-4 mr-2"/> Exportar CSV
+                </Button>
+              </div>
+
+              <div className="border border-slate-200 rounded-md">
+                <Table>
+                  <TableHeader className="bg-slate-50">
+                    <TableRow>
+                      <TableHead>Fecha y Hora</TableHead>
+                      <TableHead>Trabajador</TableHead>
+                      <TableHead>Empresa</TableHead>
+                      <TableHead>Proyecto/Destino</TableHead>
+                      <TableHead className="text-center">Movimiento</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reportData.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="text-sm">
+                          <div className="font-semibold">{new Date(r.fecha_hora).toLocaleDateString()}</div>
+                          <div className="text-xs text-slate-500">{new Date(r.fecha_hora).toLocaleTimeString()}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-bold text-slate-800 text-sm">{r.trabajadores?.nombre}</div>
+                          <div className="text-xs text-slate-500">C.C. {r.trabajadores?.documento}</div>
+                        </TableCell>
+                        <TableCell className="text-sm font-medium">{r.trabajadores?.empresa}</TableCell>
+                        <TableCell className="text-sm text-slate-600">{r.proyectos?.nombre || 'Planta General'}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge className={r.tipo === 'ENTRADA' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}>
+                            {r.tipo}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {reportData.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-10 text-slate-500">
+                          No hay registros que coincidan con los filtros seleccionados.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
