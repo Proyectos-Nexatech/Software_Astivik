@@ -99,32 +99,92 @@ export default function ControlAccesoPage() {
     const { data: tData, error: tError } = await supabase.from('trabajadores').select('*').eq('documento', documentoBusqueda.trim()).single();
     
     if (tError || !tData) {
-      setEstadoAcceso({ tipo: "ERROR", mensaje: "Trabajador No Encontrado", detalles: ["Verifique el número de documento ingresado."] });
+      // 1.5. Si no es trabajador, buscar en visitantes
+      const { data: vData, error: vError } = await supabase.from('visitantes').select('*').eq('documento', documentoBusqueda.trim()).order('fecha_fin', { ascending: false }).limit(1).single();
+
+      if (vError || !vData) {
+        setEstadoAcceso({ 
+          tipo: "NO_ENCONTRADO", 
+          mensaje: "Persona No Registrada", 
+          detalles: ["La cédula no pertenece a un trabajador ni a un visitante autorizado.", "Por favor, diríjase a RRHH o solicite un pase de visitante."] 
+        });
+        return;
+      }
+
+      // Lógica de Visitante
+      setTrabajadorActual({ id: vData.id, nombre: vData.nombre, empresa: vData.empresa_origen || 'Visitante', cargo: 'VISITANTE', es_visitante: true });
+
+      // Revisar si ya está adentro
+      const { data: lastAccessV } = await supabase.from('registros_acceso').select('*').eq('visitante_id', vData.id).order('fecha_hora', { ascending: false }).limit(1).single();
+      const isInsideV = lastAccessV && lastAccessV.tipo === 'ENTRADA';
+
+      if (isInsideV) {
+        setEstadoAcceso({ tipo: "SALIDA_LIBRE", mensaje: "Visitante en Planta", detalles: ["Salida de visitante autorizada."] });
+        return;
+      }
+
+      // Validar ventana de tiempo
+      const now = new Date();
+      const dInicio = new Date(vData.fecha_inicio);
+      const dFin = new Date(vData.fecha_fin);
+
+      if (now < dInicio) {
+        setEstadoAcceso({ tipo: "BLOQUEADO", mensaje: "ACCESO AÚN NO VÁLIDO", detalles: [`El pase de visita inicia el: ${dInicio.toLocaleString()}`] });
+      } else if (now > dFin) {
+        setEstadoAcceso({ tipo: "BLOQUEADO", mensaje: "PASE VENCIDO", detalles: [`El pase expiró el: ${dFin.toLocaleString()}`] });
+      } else {
+        setEstadoAcceso({ tipo: "PERMITIDO", mensaje: "VISITANTE AUTORIZADO", detalles: ["Pase activo en el rango permitido."] });
+      }
       return;
     }
 
     setTrabajadorActual(tData);
 
-    // 2. Buscar documentos
+    // 2. Determinar si está ADENTRO o AFUERA consultando su último movimiento (Trabajadores)
+    const { data: lastAccess } = await supabase
+      .from('registros_acceso')
+      .select('*')
+      .eq('trabajador_id', tData.id)
+      .order('fecha_hora', { ascending: false })
+      .limit(1)
+      .single();
+
+    const isInside = lastAccess && lastAccess.tipo === 'ENTRADA';
+
+    // 3. Lógica según estado
+    if (isInside) {
+      // Si está adentro, habilitamos SALIDA LIBRE sin validar documentos
+      setEstadoAcceso({ 
+        tipo: "SALIDA_LIBRE", 
+        mensaje: "Trabajador en Planta", 
+        detalles: ["Salida libre autorizada.", "No se requieren verificaciones HSE para la salida."] 
+      });
+      return;
+    }
+
+    // 4. Si está AFUERA, procedemos a validar los documentos HSE para ENTRAR
     const { data: docsData } = await supabase.from('documentos_hse').select('*').eq('trabajador_id', tData.id);
     
-    // 3. Evaluar documentos requeridos según cargo
     const requiredKeys = requiredDocsByCargo[tData.cargo] || ["ss", "examen"];
     const detallesVencidos: string[] = [];
     
     requiredKeys.forEach(key => {
       const doc = docsData?.find(d => d.tipo_documento === key);
       const estado = doc ? calculateEstado(doc.fecha_vencimiento) : "Faltante";
+      const aprobacion = doc ? doc.estado_aprobacion : "Pendiente";
       
-      if (estado === "Faltante" || estado === "Vencido") {
-        detallesVencidos.push(`Falta o está vencido: ${key.toUpperCase()}`);
+      if (estado === "Faltante" || estado === "Vencido" || aprobacion !== 'Aprobado') {
+        let motivo = "Falta o está vencido";
+        if (aprobacion === 'Rechazado') motivo = "Documento Rechazado";
+        else if (aprobacion === 'Pendiente') motivo = "Aprobación Pendiente";
+        detallesVencidos.push(`${motivo}: ${key.toUpperCase()}`);
       }
     });
 
     if (detallesVencidos.length > 0) {
       setEstadoAcceso({ tipo: "BLOQUEADO", mensaje: "ACCESO DENEGADO", detalles: detallesVencidos });
     } else {
-      setEstadoAcceso({ tipo: "PERMITIDO", mensaje: "ACCESO AUTORIZADO", detalles: ["Todos los documentos HSE están al día."] });
+      setEstadoAcceso({ tipo: "PERMITIDO", mensaje: "ACCESO AUTORIZADO", detalles: ["Todos los documentos HSE están al día y aprobados."] });
     }
   };
 
@@ -253,18 +313,31 @@ export default function ControlAccesoPage() {
                 </form>
 
                 {estadoAcceso && (
-                  <div className={`mt-6 p-4 rounded-lg border-2 ${estadoAcceso.tipo === 'PERMITIDO' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                  <div className={`mt-6 p-4 rounded-lg border-2 ${
+                    estadoAcceso.tipo === 'PERMITIDO' ? 'bg-green-50 border-green-200' : 
+                    estadoAcceso.tipo === 'SALIDA_LIBRE' ? 'bg-blue-50 border-blue-200' :
+                    estadoAcceso.tipo === 'NO_ENCONTRADO' ? 'bg-slate-100 border-slate-300' :
+                    'bg-red-50 border-red-200'
+                  }`}>
                     <div className="flex items-center gap-3 mb-2">
-                      {estadoAcceso.tipo === 'PERMITIDO' ? <CheckCircle2 className="w-8 h-8 text-green-600"/> : <XCircle className="w-8 h-8 text-red-600"/>}
-                      <h3 className={`text-xl font-black ${estadoAcceso.tipo === 'PERMITIDO' ? 'text-green-700' : 'text-red-700'}`}>{estadoAcceso.mensaje}</h3>
+                      {estadoAcceso.tipo === 'PERMITIDO' ? <CheckCircle2 className="w-8 h-8 text-green-600"/> : 
+                       estadoAcceso.tipo === 'SALIDA_LIBRE' ? <LogOut className="w-8 h-8 text-blue-600"/> :
+                       estadoAcceso.tipo === 'NO_ENCONTRADO' ? <UserCircle className="w-8 h-8 text-slate-500"/> :
+                       <XCircle className="w-8 h-8 text-red-600"/>}
+                      <h3 className={`text-xl font-black ${
+                        estadoAcceso.tipo === 'PERMITIDO' ? 'text-green-700' : 
+                        estadoAcceso.tipo === 'SALIDA_LIBRE' ? 'text-blue-700' :
+                        estadoAcceso.tipo === 'NO_ENCONTRADO' ? 'text-slate-700' :
+                        'text-red-700'
+                      }`}>{estadoAcceso.mensaje}</h3>
                     </div>
-                    {trabajadorActual && (
+                    {trabajadorActual && estadoAcceso.tipo !== 'NO_ENCONTRADO' && (
                       <div className="mb-3 text-sm font-medium text-slate-700">
                         <p>{trabajadorActual.nombre} • <span className="font-bold">{trabajadorActual.empresa}</span></p>
                         <p className="text-xs text-slate-500">{trabajadorActual.cargo}</p>
                       </div>
                     )}
-                    <ul className="text-sm space-y-1 mb-4 text-slate-600">
+                    <ul className={`text-sm space-y-1 mb-4 ${estadoAcceso.tipo === 'NO_ENCONTRADO' ? 'text-slate-600 font-medium' : 'text-slate-600'}`}>
                       {estadoAcceso.detalles.map((d, i) => <li key={i} className="flex items-center gap-2">• {d}</li>)}
                     </ul>
 
@@ -284,20 +357,34 @@ export default function ControlAccesoPage() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button onClick={() => registrarAcceso('ENTRADA')} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12">
-                            <DoorOpen className="w-5 h-5 mr-2" /> REGISTRAR ENTRADA
-                          </Button>
-                          <Button onClick={() => registrarAcceso('SALIDA')} variant="outline" className="w-full text-slate-700 font-bold h-12 border-slate-300">
-                            <LogOut className="w-5 h-5 mr-2" /> MARCAR SALIDA
-                          </Button>
-                        </div>
+                        <Button onClick={() => registrarAcceso('ENTRADA')} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12">
+                          <DoorOpen className="w-5 h-5 mr-2" /> REGISTRAR ENTRADA
+                        </Button>
                       </div>
                     )}
-                    {estadoAcceso.tipo === 'BLOQUEADO' && trabajadorActual && (
-                      <Button onClick={() => registrarAcceso('SALIDA')} variant="outline" className="w-full text-slate-700 font-bold h-12 border-red-200 bg-white hover:bg-red-50">
-                        <LogOut className="w-5 h-5 mr-2" /> SÓLO MARCAR SALIDA
-                      </Button>
+
+                    {estadoAcceso.tipo === 'SALIDA_LIBRE' && (
+                      <div className="pt-4 border-t border-blue-200">
+                        <Button onClick={() => registrarAcceso('SALIDA')} className="w-full bg-[#0a1e36] hover:bg-[#163354] text-white font-bold h-12">
+                          <LogOut className="w-5 h-5 mr-2" /> MARCAR SALIDA AHORA
+                        </Button>
+                      </div>
+                    )}
+
+                    {estadoAcceso.tipo === 'NO_ENCONTRADO' && (
+                      <div className="pt-4 border-t border-slate-300">
+                         <Button onClick={() => { setDocumentoBusqueda(""); setEstadoAcceso(null); }} variant="outline" className="w-full text-slate-700 font-bold h-12 border-slate-300">
+                           INTENTAR CON OTRA CÉDULA
+                         </Button>
+                      </div>
+                    )}
+
+                    {estadoAcceso.tipo === 'BLOQUEADO' && (
+                      <div className="pt-4 border-t border-red-200">
+                         <Button onClick={() => { setDocumentoBusqueda(""); setEstadoAcceso(null); }} variant="outline" className="w-full text-red-700 font-bold h-12 border-red-200 bg-white hover:bg-red-50">
+                           CANCELAR INGRESO
+                         </Button>
+                      </div>
                     )}
                   </div>
                 )}
@@ -305,9 +392,9 @@ export default function ControlAccesoPage() {
             </Card>
 
             <Card className="border-slate-200 shadow-sm">
-              <CardHeader className="bg-slate-50 border-b border-slate-100 pb-4">
+              <CardHeader className="bg-[#0a1e36] text-white border-b border-slate-100 pb-4 rounded-t-xl">
                 <CardTitle className="text-lg">Tránsitos Recientes</CardTitle>
-                <CardDescription>Últimos registros de entrada y salida.</CardDescription>
+                <CardDescription className="text-slate-300">Últimos registros de entrada y salida.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <Table>

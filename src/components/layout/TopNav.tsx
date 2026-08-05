@@ -42,14 +42,14 @@ export function TopNav() {
 
   if (loading) {
     return (
-      <div className="h-20 border-b border-slate-200 bg-white flex items-center justify-end px-6 shrink-0">
+      <div className="h-20 border-b border-slate-200 bg-slate-100/70 flex items-center justify-end px-6 shrink-0">
         <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
       </div>
     );
   }
 
   return (
-    <div className="h-20 border-b border-slate-200 bg-white flex items-center justify-end px-6 shrink-0 shadow-sm z-10">
+    <div className="h-20 border-b border-slate-200 bg-slate-100/70 flex items-center justify-end px-6 shrink-0 z-10">
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-3 hover:bg-slate-50 p-2 rounded-lg transition-colors border border-transparent hover:border-slate-200">
           <div className="text-right hidden sm:block">
