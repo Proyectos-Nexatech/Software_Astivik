@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Search, Plus, UserCircle, Building2, HardHat, FileX, FileCheck, Upload, Download, Loader2 } from "lucide-react";
+import { Search, Plus, UserCircle, Building2, HardHat, FileX, FileCheck, Upload, Download, Loader2, X } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 export default function PersonalOperativoPage() {
@@ -125,27 +125,39 @@ export default function PersonalOperativoPage() {
               <Upload className="w-4 h-4 mr-2" />
               CARGA MASIVA CSV
             </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Carga Masiva de Personal</DialogTitle>
-                <DialogDescription>
-                  Sube un archivo .csv para agregar múltiples trabajadores al mismo tiempo.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="py-6 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-lg bg-slate-50">
-                <input 
-                  type="file" 
-                  accept=".csv" 
-                  className="hidden" 
-                  ref={fileInputRef}
-                  onChange={handleCsvUpload}
-                />
-                <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-                  Seleccionar Archivo CSV
+            <DialogContent className="p-0 overflow-hidden" showCloseButton={false}>
+              <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 relative flex items-start justify-between">
+                <div>
+                  <DialogTitle className="text-xl">Carga Masiva de Personal</DialogTitle>
+                  <DialogDescription className="text-slate-400 mt-1">
+                    Sube un archivo .csv para agregar múltiples trabajadores al mismo tiempo.
+                  </DialogDescription>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setIsCsvModalOpen(false)}
+                  className="text-slate-400 hover:text-white hover:bg-slate-800 -mr-2 -mt-1"
+                >
+                  <X className="w-5 h-5" />
                 </Button>
-                <p className="text-xs text-slate-500 mt-2 text-center">Columnas esperadas (con punto y coma):<br/>Documento;Nombre;Cargo;Contratista;Estado ARL</p>
               </div>
-              <DialogFooter>
+              <div className="p-6">
+                <div className="py-6 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-lg bg-slate-50">
+                  <input 
+                    type="file" 
+                    accept=".csv" 
+                    className="hidden" 
+                    ref={fileInputRef}
+                    onChange={handleCsvUpload}
+                  />
+                  <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                    Seleccionar Archivo CSV
+                  </Button>
+                  <p className="text-xs text-slate-500 mt-2 text-center">Columnas esperadas (con punto y coma):<br/>Documento;Nombre;Cargo;Contratista;Estado ARL</p>
+                </div>
+              </div>
+              <DialogFooter className="px-6 pb-6 pt-2 bg-transparent border-t-0">
                 <a href={csvTemplate} download="plantilla_personal.csv">
                   <Button variant="link" size="sm" className="text-blue-600">
                     <Download className="w-4 h-4 mr-1" /> Descargar Plantilla
@@ -161,14 +173,24 @@ export default function PersonalOperativoPage() {
               <Plus className="w-4 h-4 mr-2" />
               NUEVO TRABAJADOR
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Registrar Personal</DialogTitle>
-                <DialogDescription>
-                  Agrega un nuevo trabajador y vincúlalo a una empresa.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
+            <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden" showCloseButton={false}>
+              <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 relative flex items-start justify-between">
+                <div>
+                  <DialogTitle className="text-xl">Registrar Personal</DialogTitle>
+                  <DialogDescription className="text-slate-400 mt-1">
+                    Agrega un nuevo trabajador y vincúlalo a una empresa.
+                  </DialogDescription>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-slate-400 hover:text-white hover:bg-slate-800 -mr-2 -mt-1"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <div className="px-6 py-4 grid gap-4">
                 <div className="grid gap-2">
                   <Label>Nombre Completo</Label>
                   <Input value={form.nombre} onChange={(e) => setForm({...form, nombre: e.target.value})} placeholder="Ej. Carlos Pérez" />
@@ -185,7 +207,7 @@ export default function PersonalOperativoPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label>Empresa Contratista</Label>
-                  <Select value={form.empresa} onValueChange={(val) => setForm({...form, empresa: val})}>
+                  <Select value={form.empresa} onValueChange={(val) => setForm({...form, empresa: val || ''})}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccione una empresa" />
                     </SelectTrigger>
@@ -198,8 +220,8 @@ export default function PersonalOperativoPage() {
                   </Select>
                 </div>
               </div>
-              <DialogFooter>
-                <Button onClick={handleCrearTrabajador} className="bg-slate-900 text-white">Guardar Trabajador</Button>
+              <DialogFooter className="px-6 pb-6 pt-2 bg-transparent border-t-0">
+                <Button onClick={handleCrearTrabajador} className="bg-slate-900 text-white w-full">Guardar Trabajador</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

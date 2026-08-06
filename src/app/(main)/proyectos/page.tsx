@@ -26,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Ship, Plus, Search, Building2, Users, AlertCircle, FileCheck, Anchor, Filter, Loader2, CheckCircle2, Upload, Download } from "lucide-react";
+import { Ship, Plus, Search, Building2, Users, AlertCircle, FileCheck, Anchor, Filter, Loader2, CheckCircle2, Upload, Download, X } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 // Mock Data Contratistas (Estadísticas globales para el footer)
@@ -59,6 +59,10 @@ export default function ProyectosPage() {
   const fileInputActividadesRef = useRef<HTMLInputElement>(null);
   const [isCsvActividadesModalOpen, setIsCsvActividadesModalOpen] = useState(false);
   const csvActividadesTemplate = "data:text/csv;charset=utf-8,%EF%BB%BFNombre%0APintura de Casco%0ALimpieza de Tanques%0ASoldadura en Cubierta";
+  
+  // PDF Upload State
+  const fileInputPdfRef = useRef<HTMLInputElement>(null);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -170,6 +174,45 @@ export default function ProyectosPage() {
     }
   };
 
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && selectedProyecto) {
+      if (file.type !== "application/pdf") {
+        alert("Por favor, sube un archivo PDF.");
+        return;
+      }
+      setUploadingPdf(true);
+      const fileName = `cronograma_${selectedProyecto.id}_${Date.now()}.pdf`;
+      
+      const { data, error } = await supabase.storage
+        .from('hse_docs')
+        .upload(fileName, file);
+        
+      if (error) {
+        alert("Error al subir el archivo: " + error.message);
+        setUploadingPdf(false);
+        return;
+      }
+      
+      const { data: urlData } = supabase.storage.from('hse_docs').getPublicUrl(fileName);
+      const publicUrl = urlData.publicUrl;
+      
+      // Update DB
+      const { error: dbError } = await supabase
+        .from('proyectos')
+        .update({ cronograma_pdf: publicUrl })
+        .eq('id', selectedProyecto.id);
+        
+      if (!dbError) {
+        setSelectedProyecto({ ...selectedProyecto, cronograma_pdf: publicUrl });
+        fetchData(); // refresh the main list
+      } else {
+        alert("Error al guardar la URL en el proyecto.");
+      }
+      setUploadingPdf(false);
+    }
+  };
+
   const handleAssignContratista = async (actividadId: string) => {
     const contratistaId = asignandoContratista[actividadId];
     if (!contratistaId) return;
@@ -217,14 +260,24 @@ export default function ProyectosPage() {
             <Plus className="w-4 h-4 mr-2" />
             NUEVO PROYECTO
           </Button>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Agregar Nuevo Proyecto</DialogTitle>
-              <DialogDescription>
-                Crea un nuevo proyecto o registra un barco para asignar contratistas.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
+          <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden" showCloseButton={false}>
+            <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 relative flex items-start justify-between">
+              <div>
+                <DialogTitle className="text-xl">Agregar Nuevo Proyecto</DialogTitle>
+                <DialogDescription className="text-slate-400 mt-1">
+                  Crea un nuevo proyecto o registra un barco para asignar contratistas.
+                </DialogDescription>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setIsNewProjectModalOpen(false)}
+                className="text-slate-400 hover:text-white hover:bg-slate-800 -mr-2 -mt-1"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+            <div className="px-6 py-4 grid gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="name">Nombre del Proyecto / Barco</Label>
                 <Input 
@@ -235,8 +288,8 @@ export default function ProyectosPage() {
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button onClick={handleCrearProyecto} className="bg-slate-900 text-white">Guardar Proyecto</Button>
+            <DialogFooter className="px-6 pb-6 pt-2 bg-transparent border-t-0">
+              <Button onClick={handleCrearProyecto} className="bg-slate-900 text-white w-full">Guardar Proyecto</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -298,17 +351,27 @@ export default function ProyectosPage() {
 
       {/* Details & Activities Modal */}
       <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
-        <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden" showCloseButton={false}>
           {selectedProyecto && (
             <>
-              <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800">
-                <DialogTitle className="text-xl flex items-center justify-between">
-                  {selectedProyecto.nombre}
-                  <Badge className="bg-blue-600 text-white border-blue-500">{selectedProyecto.estado}</Badge>
-                </DialogTitle>
-                <DialogDescription className="text-slate-400 mt-1">
-                  Configuración de HSE y asignación de contratistas por actividad.
-                </DialogDescription>
+              <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 relative flex items-start justify-between">
+                <div>
+                  <DialogTitle className="text-xl flex items-center gap-4">
+                    {selectedProyecto.nombre}
+                    <Badge className="bg-blue-600 text-white border-blue-500">{selectedProyecto.estado}</Badge>
+                  </DialogTitle>
+                  <DialogDescription className="text-slate-400 mt-1">
+                    Configuración de HSE y asignación de contratistas por actividad.
+                  </DialogDescription>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setIsDetailsModalOpen(false)}
+                  className="text-slate-400 hover:text-white hover:bg-slate-800 -mr-2 -mt-1"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
               </div>
               
               <div className="p-6">
@@ -356,9 +419,29 @@ export default function ProyectosPage() {
                     <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
                       <div className="flex justify-between items-center mb-2">
                         <Label className="text-slate-700 font-bold block">Crear Nueva Actividad</Label>
-                        <Button variant="outline" size="sm" onClick={() => setIsCsvActividadesModalOpen(true)} className="h-8">
-                          <Upload className="w-3 h-3 mr-1" /> Carga CSV
-                        </Button>
+                        <div className="flex gap-2">
+                          {selectedProyecto.cronograma_pdf && (
+                            <a href={selectedProyecto.cronograma_pdf} target="_blank" rel="noopener noreferrer">
+                              <Button variant="outline" size="sm" className="h-8 text-blue-600 border-blue-200 hover:bg-blue-50">
+                                Ver PDF
+                              </Button>
+                            </a>
+                          )}
+                          <input 
+                            type="file" 
+                            accept=".pdf" 
+                            className="hidden" 
+                            ref={fileInputPdfRef}
+                            onChange={handlePdfUpload}
+                          />
+                          <Button variant="outline" size="sm" onClick={() => fileInputPdfRef.current?.click()} className="h-8" disabled={uploadingPdf}>
+                            {uploadingPdf ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <FileCheck className="w-3 h-3 mr-1" />} 
+                            {uploadingPdf ? "Subiendo..." : "Subir PDF"}
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setIsCsvActividadesModalOpen(true)} className="h-8">
+                            <Upload className="w-3 h-3 mr-1" /> Carga CSV
+                          </Button>
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         <Input 

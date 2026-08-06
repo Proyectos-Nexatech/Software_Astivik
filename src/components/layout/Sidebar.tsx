@@ -54,7 +54,7 @@ export function Sidebar() {
           <Key className="w-4 h-4" /> Control de Acceso
         </Link>
         <Link href="/reportes" className={`flex items-center gap-3 px-3 py-2 rounded-md font-medium text-sm transition-colors ${pathname.startsWith('/reportes') ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
-          <FileCheck className="w-4 h-4" /> Compliance Reports
+          <FileCheck className="w-4 h-4" /> Reportes de Cumplimiento
         </Link>
         <Link href="/configuracion" className={`flex items-center gap-3 px-3 py-2 rounded-md font-medium text-sm transition-colors ${pathname.startsWith('/configuracion') ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
           <Settings className="w-4 h-4" /> Configuración

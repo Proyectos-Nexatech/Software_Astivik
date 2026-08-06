@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building2, Search, Plus, Upload, Download, CheckCircle2, AlertCircle, Edit2, Trash2, Loader2 } from "lucide-react";
+import { Building2, Search, Plus, Upload, Download, CheckCircle2, AlertCircle, Edit2, Trash2, Loader2, X } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 export default function ContratistasPage() {
@@ -143,33 +143,45 @@ export default function ContratistasPage() {
         <div className="flex gap-2">
           {/* Modal CSV */}
           <Dialog open={isCsvModalOpen} onOpenChange={setIsCsvModalOpen}>
-            <DialogTrigger asChild>
+            <DialogTrigger render={
               <Button variant="outline" className="bg-white">
                 <Upload className="w-4 h-4 mr-2" />
                 CARGA MASIVA CSV
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Carga Masiva de Contratistas</DialogTitle>
-                <DialogDescription>
-                  Sube un archivo .csv para agregar múltiples empresas al mismo tiempo.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="py-6 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-lg bg-slate-50">
-                <input 
-                  type="file" 
-                  accept=".csv" 
-                  className="hidden" 
-                  ref={fileInputRef}
-                  onChange={handleCsvUpload}
-                />
-                <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-                  Seleccionar Archivo CSV
+            } />
+            <DialogContent className="p-0 overflow-hidden" showCloseButton={false}>
+              <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 relative flex items-start justify-between">
+                <div>
+                  <DialogTitle className="text-xl">Carga Masiva de Contratistas</DialogTitle>
+                  <DialogDescription className="text-slate-400 mt-1">
+                    Sube un archivo .csv para agregar múltiples empresas al mismo tiempo.
+                  </DialogDescription>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setIsCsvModalOpen(false)}
+                  className="text-slate-400 hover:text-white hover:bg-slate-800 -mr-2 -mt-1"
+                >
+                  <X className="w-5 h-5" />
                 </Button>
-                <p className="text-xs text-slate-500 mt-2">Columnas esperadas: NIT, Nombre, Especialidad, Contacto</p>
               </div>
-              <DialogFooter>
+              <div className="p-6">
+                <div className="py-6 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-lg bg-slate-50">
+                  <input 
+                    type="file" 
+                    accept=".csv" 
+                    className="hidden" 
+                    ref={fileInputRef}
+                    onChange={handleCsvUpload}
+                  />
+                  <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                    Seleccionar Archivo CSV
+                  </Button>
+                  <p className="text-xs text-slate-500 mt-2">Columnas esperadas: NIT, Nombre, Especialidad, Contacto</p>
+                </div>
+              </div>
+              <DialogFooter className="px-6 pb-6 pt-2 bg-transparent border-t-0">
                 <a href={csvTemplate} download="plantilla_contratistas.csv">
                   <Button variant="link" size="sm" className="text-blue-600">
                     <Download className="w-4 h-4 mr-1" /> Descargar Plantilla
@@ -181,18 +193,30 @@ export default function ContratistasPage() {
 
           {/* Modal Individual */}
           <Dialog open={isIndividualModalOpen} onOpenChange={setIsIndividualModalOpen}>
-            <Button onClick={handleOpenNewModal} className="bg-slate-900 hover:bg-slate-800 text-white font-medium">
-              <Plus className="w-4 h-4 mr-2" />
-              NUEVO CONTRATISTA
-            </Button>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingId ? "Editar Contratista" : "Agregar Contratista"}</DialogTitle>
-                <DialogDescription>
-                  {editingId ? "Modifica los datos de la empresa." : "Registra una nueva empresa en el sistema."}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
+            <DialogTrigger render={
+              <Button onClick={handleOpenNewModal} className="bg-slate-900 hover:bg-slate-800 text-white font-medium">
+                <Plus className="w-4 h-4 mr-2" />
+                NUEVO CONTRATISTA
+              </Button>
+            } />
+            <DialogContent className="p-0 overflow-hidden" showCloseButton={false}>
+              <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 relative flex items-start justify-between">
+                <div>
+                  <DialogTitle className="text-xl">{editingId ? "Editar Contratista" : "Agregar Contratista"}</DialogTitle>
+                  <DialogDescription className="text-slate-400 mt-1">
+                    {editingId ? "Modifica los datos de la empresa." : "Registra una nueva empresa en el sistema."}
+                  </DialogDescription>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setIsIndividualModalOpen(false)}
+                  className="text-slate-400 hover:text-white hover:bg-slate-800 -mr-2 -mt-1"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <div className="px-6 py-4 grid gap-4">
                 <div className="grid gap-2">
                   <Label>Razón Social / Nombre</Label>
                   <Input value={form.empresa} onChange={(e) => setForm({...form, empresa: e.target.value})} placeholder="Ej. Metalprest S.A.S" />
@@ -212,8 +236,8 @@ export default function ContratistasPage() {
                   <Input type="email" value={form.contacto} onChange={(e) => setForm({...form, contacto: e.target.value})} placeholder="correo@empresa.com" />
                 </div>
               </div>
-              <DialogFooter>
-                <Button onClick={handleSaveIndividual} className="bg-slate-900 text-white">Guardar Registro</Button>
+              <DialogFooter className="px-6 pb-6 pt-2 bg-transparent border-t-0">
+                <Button onClick={handleSaveIndividual} className="bg-slate-900 text-white w-full">Guardar Registro</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

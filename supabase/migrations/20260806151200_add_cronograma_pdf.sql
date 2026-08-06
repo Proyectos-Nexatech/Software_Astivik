@@ -1,0 +1,1 @@
+ALTER TABLE proyectos ADD COLUMN cronograma_pdf TEXT;

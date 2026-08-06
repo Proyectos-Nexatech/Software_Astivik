@@ -261,8 +261,8 @@ export default function ControlAccesoPage() {
       Proyecto: r.proyectos?.nombre || 'General'
     }));
 
-    const csv = Papa.unparse(exportFormat);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const csv = Papa.unparse(exportFormat, { delimiter: ";" });
+    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
@@ -345,7 +345,7 @@ export default function ControlAccesoPage() {
                       <div className="space-y-4 pt-4 border-t border-green-200">
                         <div className="space-y-2">
                           <Label className="text-xs font-bold text-green-800 uppercase tracking-wider">Proyecto Destino (Opcional)</Label>
-                          <Select value={proyectoSeleccionado} onValueChange={setProyectoSeleccionado}>
+                          <Select value={proyectoSeleccionado} onValueChange={(val) => setProyectoSeleccionado(val || '')}>
                             <SelectTrigger className="bg-white border-green-200 focus:ring-green-500">
                               <SelectValue placeholder="Ninguno en particular" />
                             </SelectTrigger>
@@ -391,8 +391,8 @@ export default function ControlAccesoPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200 shadow-sm">
-              <CardHeader className="bg-[#0a1e36] text-white border-b border-slate-100 pb-4 rounded-t-xl">
+            <Card className="border-slate-200 shadow-sm overflow-hidden">
+              <CardHeader className="bg-[#0a1e36] text-white border-b border-slate-100 pb-4">
                 <CardTitle className="text-lg">Tránsitos Recientes</CardTitle>
                 <CardDescription className="text-slate-300">Últimos registros de entrada y salida.</CardDescription>
               </CardHeader>
@@ -416,7 +416,7 @@ export default function ControlAccesoPage() {
                           <p className="text-[10px] text-slate-500">{r.trabajadores?.empresa}</p>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge className={r.tipo === 'ENTRADA' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}>
+                          <Badge className={r.tipo === 'ENTRADA' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}>
                             {r.tipo}
                           </Badge>
                         </TableCell>
@@ -442,7 +442,7 @@ export default function ControlAccesoPage() {
             </CardHeader>
             <CardContent className="p-6">
               <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <Select value={filtroRango} onValueChange={setFiltroRango}>
+                <Select value={filtroRango} onValueChange={(val) => setFiltroRango(val || '')}>
                   <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Rango de Fechas" />
                   </SelectTrigger>
@@ -454,7 +454,7 @@ export default function ControlAccesoPage() {
                   </SelectContent>
                 </Select>
                 
-                <Select value={filtroEmpresa} onValueChange={setFiltroEmpresa}>
+                <Select value={filtroEmpresa} onValueChange={(val) => setFiltroEmpresa(val || '')}>
                   <SelectTrigger className="w-full sm:w-[220px]">
                     <SelectValue placeholder="Filtrar por Empresa" />
                   </SelectTrigger>
@@ -466,7 +466,7 @@ export default function ControlAccesoPage() {
                   </SelectContent>
                 </Select>
 
-                <Select value={filtroProyecto} onValueChange={setFiltroProyecto}>
+                <Select value={filtroProyecto} onValueChange={(val) => setFiltroProyecto(val || '')}>
                   <SelectTrigger className="w-full sm:w-[220px]">
                     <SelectValue placeholder="Filtrar por Proyecto" />
                   </SelectTrigger>
@@ -509,7 +509,7 @@ export default function ControlAccesoPage() {
                         <TableCell className="text-sm font-medium">{r.trabajadores?.empresa}</TableCell>
                         <TableCell className="text-sm text-slate-600">{r.proyectos?.nombre || 'Planta General'}</TableCell>
                         <TableCell className="text-center">
-                          <Badge className={r.tipo === 'ENTRADA' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}>
+                          <Badge className={r.tipo === 'ENTRADA' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}>
                             {r.tipo}
                           </Badge>
                         </TableCell>

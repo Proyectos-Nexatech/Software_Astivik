@@ -296,7 +296,7 @@ export default function ConfiguracionPage() {
                       <TableCell className="text-right px-6">
                         <Select 
                           value={vigencias[key]?.toString() || "12"} 
-                          onValueChange={(val) => handleVigenciaChange(key, parseInt(val))}
+                          onValueChange={(val) => handleVigenciaChange(key, parseInt(val || '12'))}
                         >
                           <SelectTrigger className="w-[180px] bg-white ml-auto">
                             <SelectValue placeholder="Seleccionar" />
