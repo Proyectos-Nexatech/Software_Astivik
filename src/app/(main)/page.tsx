@@ -122,48 +122,8 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard de Inteligencia Operativa</h1>
           <p className="text-slate-500 text-sm mt-1">Datos en tiempo real de seguridad y aforo en planta.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="bg-white text-slate-600 font-medium h-9"><FileText className="w-4 h-4 mr-2" /> PDF</Button>
-          <Button variant="outline" size="sm" className="bg-white text-slate-600 font-medium h-9"><FileDown className="w-4 h-4 mr-2" /> CSV</Button>
-          <Button size="sm" className="bg-slate-900 hover:bg-slate-800 text-white font-medium h-9"><Clock className="w-4 h-4 mr-2" /> PROGRAMAR ENVÍO</Button>
-        </div>
       </div>
 
-      <Card className="bg-white shadow-sm border-slate-200">
-        <CardContent className="p-4 flex flex-wrap md:flex-nowrap gap-4 items-end">
-          <div className="space-y-2 flex-1 min-w-[200px]">
-            <label className="text-[11px] font-bold text-slate-500 tracking-wider">PROYECTO / BARCO</label>
-            <Select defaultValue="all">
-              <SelectTrigger className="h-10 bg-slate-50">
-                <SelectValue placeholder="Todos los proyectos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los proyectos</SelectItem>
-                {proyectos.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2 flex-1 min-w-[200px]">
-            <label className="text-[11px] font-bold text-slate-500 tracking-wider">CONTRATISTA</label>
-            <Select defaultValue="all">
-              <SelectTrigger className="h-10 bg-slate-50">
-                <SelectValue placeholder="Todas las empresas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las empresas</SelectItem>
-                {contratistas.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button className="bg-[#0a1e36] hover:bg-[#163354] text-white font-semibold h-10 px-6">
-            <Filter className="w-4 h-4 mr-2" /> APLICAR FILTROS
-          </Button>
-        </CardContent>
-      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="shadow-sm border-slate-200">
