@@ -146,7 +146,7 @@ export default function DashboardPage() {
         <CardContent className="p-4 flex flex-wrap md:flex-nowrap gap-4 items-end">
           <div className="space-y-2 flex-1 min-w-[200px]">
             <label className="text-[11px] font-bold text-slate-500 tracking-wider">PROYECTO / BARCO</label>
-            <Select value={filtroProyecto} onValueChange={setFiltroProyecto}>
+            <Select value={filtroProyecto} onValueChange={(val) => setFiltroProyecto(val || '')}>
               <SelectTrigger className="h-10 bg-slate-50">
                 <SelectValue placeholder="Todos los proyectos" />
               </SelectTrigger>
@@ -160,7 +160,7 @@ export default function DashboardPage() {
           </div>
           <div className="space-y-2 flex-1 min-w-[200px]">
             <label className="text-[11px] font-bold text-slate-500 tracking-wider">CONTRATISTA</label>
-            <Select value={filtroEmpresa} onValueChange={setFiltroEmpresa}>
+            <Select value={filtroEmpresa} onValueChange={(val) => setFiltroEmpresa(val || '')}>
               <SelectTrigger className="h-10 bg-slate-50">
                 <SelectValue placeholder="Todas las empresas" />
               </SelectTrigger>
