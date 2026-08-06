@@ -53,9 +53,7 @@ export default function DashboardPage() {
 
     let workers = workersRaw || [];
     if (filtroEmpresa !== 'all') {
-      // Find the name of the selected empresa
-      const selectedEmpresa = cData?.find(c => c.id === filtroEmpresa)?.nombre || filtroEmpresa;
-      workers = workers.filter(w => w.empresa === selectedEmpresa || w.empresa === filtroEmpresa);
+      workers = workers.filter(w => w.empresa === filtroEmpresa);
     }
 
     // 1. Calculate Compliance (Global & Per Contratista)
@@ -110,7 +108,10 @@ export default function DashboardPage() {
       .gte('fecha_hora', today.toISOString());
       
     if (filtroProyecto !== 'all') {
-      queryAccesos = queryAccesos.eq('proyecto_destino', filtroProyecto);
+      const selectedProjectId = pData?.find((p: any) => p.nombre === filtroProyecto)?.id;
+      if (selectedProjectId) {
+        queryAccesos = queryAccesos.eq('proyecto_destino', selectedProjectId);
+      }
     }
 
     const { data: accesos } = await queryAccesos;
@@ -152,7 +153,7 @@ export default function DashboardPage() {
               <SelectContent>
                 <SelectItem value="all">Todos los proyectos</SelectItem>
                 {proyectos.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
+                  <SelectItem key={p.id} value={p.nombre}>{p.nombre}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -166,7 +167,7 @@ export default function DashboardPage() {
               <SelectContent>
                 <SelectItem value="all">Todas las empresas</SelectItem>
                 {contratistas.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                  <SelectItem key={c.id} value={c.nombre}>{c.nombre}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
