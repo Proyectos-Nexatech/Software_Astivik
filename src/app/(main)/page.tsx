@@ -27,6 +27,9 @@ export default function DashboardPage() {
   const [proyectos, setProyectos] = useState<any[]>([]);
   const [contratistas, setContratistas] = useState<any[]>([]);
 
+  const [filtroProyecto, setFiltroProyecto] = useState("all");
+  const [filtroEmpresa, setFiltroEmpresa] = useState("all");
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -43,17 +46,24 @@ export default function DashboardPage() {
     if (cData) setContratistas(cData);
 
     // Fetch Workers and Docs
-    const [{ data: workers }, { data: docs }] = await Promise.all([
+    const [{ data: workersRaw }, { data: docs }] = await Promise.all([
       supabase.from('trabajadores').select('*'),
       supabase.from('documentos_hse').select('*')
     ]);
+
+    let workers = workersRaw || [];
+    if (filtroEmpresa !== 'all') {
+      // Find the name of the selected empresa
+      const selectedEmpresa = cData?.find(c => c.id === filtroEmpresa)?.nombre || filtroEmpresa;
+      workers = workers.filter(w => w.empresa === selectedEmpresa || w.empresa === filtroEmpresa);
+    }
 
     // 1. Calculate Compliance (Global & Per Contratista)
     let aptosTotales = 0;
     const statsPorEmpresa: Record<string, { total: number; aptos: number }> = {};
     const alertas: any[] = [];
 
-    if (workers && docs) {
+    if (workers.length > 0 && docs) {
       workers.forEach(w => {
         const reqDocs = requiredDocsByCargo[w.cargo] || ["ss", "examen"];
         const wDocs = docs.filter(d => d.trabajador_id === w.id);
@@ -80,8 +90,8 @@ export default function DashboardPage() {
       });
     }
 
-    const totalWorkers = workers ? workers.length : 1;
-    const globalCompliance = totalWorkers > 0 ? (aptosTotales / totalWorkers) * 100 : 0;
+    const totalWorkers = workers.length > 0 ? workers.length : 1;
+    const globalCompliance = workers.length > 0 ? (aptosTotales / totalWorkers) * 100 : 0;
 
     const contratistasInfo = Object.entries(statsPorEmpresa).map(([empresa, data]) => ({
       empresa,
@@ -93,10 +103,17 @@ export default function DashboardPage() {
     // 2. Calculate Aforo (Today's entries minus exits)
     const today = new Date();
     today.setHours(0,0,0,0);
-    const { data: accesos } = await supabase
+    
+    let queryAccesos = supabase
       .from('registros_acceso')
       .select('*')
       .gte('fecha_hora', today.toISOString());
+      
+    if (filtroProyecto !== 'all') {
+      queryAccesos = queryAccesos.eq('proyecto_destino', filtroProyecto);
+    }
+
+    const { data: accesos } = await queryAccesos;
 
     let aforo = 0;
     if (accesos) {
@@ -124,6 +141,41 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <Card className="bg-white shadow-sm border-slate-200">
+        <CardContent className="p-4 flex flex-wrap md:flex-nowrap gap-4 items-end">
+          <div className="space-y-2 flex-1 min-w-[200px]">
+            <label className="text-[11px] font-bold text-slate-500 tracking-wider">PROYECTO / BARCO</label>
+            <Select value={filtroProyecto} onValueChange={setFiltroProyecto}>
+              <SelectTrigger className="h-10 bg-slate-50">
+                <SelectValue placeholder="Todos los proyectos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los proyectos</SelectItem>
+                {proyectos.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2 flex-1 min-w-[200px]">
+            <label className="text-[11px] font-bold text-slate-500 tracking-wider">CONTRATISTA</label>
+            <Select value={filtroEmpresa} onValueChange={setFiltroEmpresa}>
+              <SelectTrigger className="h-10 bg-slate-50">
+                <SelectValue placeholder="Todas las empresas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las empresas</SelectItem>
+                {contratistas.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={fetchDashboardData} className="bg-[#0a1e36] hover:bg-[#163354] text-white font-semibold h-10 px-6">
+            <Filter className="w-4 h-4 mr-2" /> APLICAR FILTROS
+          </Button>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="shadow-sm border-slate-200">
