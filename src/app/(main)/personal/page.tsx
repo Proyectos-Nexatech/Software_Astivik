@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Search, Plus, UserCircle, Building2, HardHat, FileX, FileCheck, Upload, Download, Loader2, X } from "lucide-react";
+import { Search, Plus, UserCircle, Building2, HardHat, FileX, FileCheck, Upload, Download, Loader2, X, Edit2, Trash2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 export default function PersonalOperativoPage() {
@@ -19,8 +19,10 @@ export default function PersonalOperativoPage() {
   const [contratistas, setContratistas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ documento: "", nombre: "", cargo: "", empresa: "", estado_arl: "Al Día" });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,6 +36,7 @@ export default function PersonalOperativoPage() {
     
     if (user) {
       const { data: pData } = await supabase.from('perfiles_usuario').select('*, contratistas(nombre)').eq('id', user.id).single();
+      if (pData) setUserProfile(pData);
       if (pData?.rol === 'lider_contratista' && pData?.contratistas?.nombre) {
         empresaFiltro = pData.contratistas.nombre;
       }
@@ -63,22 +66,64 @@ export default function PersonalOperativoPage() {
 
   const handleCrearTrabajador = async () => {
     if (form.nombre && form.documento && form.empresa) {
-      const { data, error } = await supabase.from('trabajadores').insert([{
-        documento: form.documento,
-        nombre: form.nombre,
-        cargo: form.cargo,
-        empresa: form.empresa,
-        estado_arl: form.estado_arl
-      }]).select();
+      if (editingId) {
+        const { data, error } = await supabase.from('trabajadores').update({
+          documento: form.documento,
+          nombre: form.nombre,
+          cargo: form.cargo,
+          empresa: form.empresa,
+          estado_arl: form.estado_arl
+        }).eq('id', editingId).select();
 
-      if (!error && data) {
-        setPersonal([data[0], ...personal]);
-        setForm({ documento: "", nombre: "", cargo: "", empresa: "", estado_arl: "Al Día" });
-        setIsModalOpen(false);
+        if (!error && data) {
+          setPersonal(personal.map(p => p.id === editingId ? data[0] : p));
+          setForm({ documento: "", nombre: "", cargo: "", empresa: "", estado_arl: "Al Día" });
+          setIsModalOpen(false);
+          setEditingId(null);
+        } else {
+          alert("Error al actualizar trabajador.");
+        }
       } else {
-        alert("Error al guardar trabajador. Verifica que la cédula no esté duplicada.");
+        const { data, error } = await supabase.from('trabajadores').insert([{
+          documento: form.documento,
+          nombre: form.nombre,
+          cargo: form.cargo,
+          empresa: form.empresa,
+          estado_arl: form.estado_arl
+        }]).select();
+
+        if (!error && data) {
+          setPersonal([data[0], ...personal]);
+          setForm({ documento: "", nombre: "", cargo: "", empresa: "", estado_arl: "Al Día" });
+          setIsModalOpen(false);
+        } else {
+          alert("Error al guardar trabajador. Verifica que la cédula no esté duplicada.");
+        }
       }
     }
+  };
+
+  const handleDeleteTrabajador = async (id: string) => {
+    if (confirm("¿Estás seguro de eliminar este trabajador?")) {
+      const { error } = await supabase.from('trabajadores').delete().eq('id', id);
+      if (!error) {
+        setPersonal(personal.filter(p => p.id !== id));
+      } else {
+        alert("Error al eliminar. Es posible que el trabajador tenga registros de acceso asociados.");
+      }
+    }
+  };
+
+  const handleEditClick = (trabajador: any) => {
+    setForm({
+      documento: trabajador.documento,
+      nombre: trabajador.nombre,
+      cargo: trabajador.cargo,
+      empresa: trabajador.empresa,
+      estado_arl: trabajador.estado_arl
+    });
+    setEditingId(trabajador.id);
+    setIsModalOpen(true);
   };
 
   const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,6 +154,8 @@ export default function PersonalOperativoPage() {
   };
 
   const csvTemplate = "data:text/csv;charset=utf-8,%EF%BB%BFDocumento;Nombre;Cargo;Contratista;Estado ARL%0A1045223112;Carlos Mendoza;Soldador 1A;Metalprest S.A.S;Al Día";
+  
+  const puedeEditar = userProfile?.rol === 'lider_hse' || userProfile?.rol === 'admin' || userProfile?.rol === 'lider_contratista' || userProfile?.rol === 'ADMINISTRADOR';
 
   return (
     <div className="space-y-8 max-w-[1200px] mx-auto pb-10">
@@ -168,7 +215,13 @@ export default function PersonalOperativoPage() {
           </Dialog>
 
           {/* Modal Individual */}
-          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <Dialog open={isModalOpen} onOpenChange={(open) => {
+            if (!open) {
+              setEditingId(null);
+              setForm({ documento: "", nombre: "", cargo: "", empresa: "", estado_arl: "Al Día" });
+            }
+            setIsModalOpen(open);
+          }}>
             <DialogTrigger render={<Button className="bg-slate-900 hover:bg-slate-800 text-white font-medium" />}>
               <Plus className="w-4 h-4 mr-2" />
               NUEVO TRABAJADOR
@@ -176,9 +229,9 @@ export default function PersonalOperativoPage() {
             <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden" showCloseButton={false}>
               <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 relative flex items-start justify-between">
                 <div>
-                  <DialogTitle className="text-xl">Registrar Personal</DialogTitle>
+                  <DialogTitle className="text-xl">{editingId ? 'Editar' : 'Registrar'} Personal</DialogTitle>
                   <DialogDescription className="text-slate-400 mt-1">
-                    Agrega un nuevo trabajador y vincúlalo a una empresa.
+                    {editingId ? 'Modifica los datos del trabajador.' : 'Agrega un nuevo trabajador y vincúlalo a una empresa.'}
                   </DialogDescription>
                 </div>
                 <Button 
@@ -250,6 +303,7 @@ export default function PersonalOperativoPage() {
                   <TableHead className="font-semibold">Cargo</TableHead>
                   <TableHead className="font-semibold">Contratista</TableHead>
                   <TableHead className="font-semibold text-center">Estado ARL / Docs</TableHead>
+                  {puedeEditar && <TableHead className="font-semibold text-right px-6">Acciones</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -279,6 +333,18 @@ export default function PersonalOperativoPage() {
                         <Badge className="bg-red-100 text-red-800 hover:bg-red-100"><FileX className="w-3 h-3 mr-1" /> Vencida</Badge>
                       )}
                     </TableCell>
+                    {puedeEditar && (
+                      <TableCell className="text-right px-6">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50" onClick={() => handleEditClick(p)}>
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-800 hover:bg-red-50" onClick={() => handleDeleteTrabajador(p.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
                 {personal.length === 0 && (
