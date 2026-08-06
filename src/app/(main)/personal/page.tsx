@@ -12,6 +12,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Search, Plus, UserCircle, Building2, HardHat, FileX, FileCheck, Upload, Download, Loader2, X, Edit2, Trash2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { AlertCircle } from "lucide-react";
+
+const requiredDocsByCargo: Record<string, string[]> = {
+  "Soldador 1A": ["ss", "examen", "alturas", "confinados", "soldadura"],
+  "Sandblaster": ["ss", "examen", "alturas", "confinados"],
+  "Electricista": ["ss", "examen", "alturas"]
+};
 
 export default function PersonalOperativoPage() {
   const supabase = createClient();
@@ -51,7 +58,41 @@ export default function PersonalOperativoPage() {
     }
 
     const { data: tData } = await workersQuery;
-    if (tData) setPersonal(tData);
+    
+    // 2. Fetch Documentos HSE
+    const { data: dData } = await supabase.from('documentos_hse').select('*');
+
+    if (tData) {
+      const personalWithStatus = tData.map(worker => {
+        const reqDocs = requiredDocsByCargo[worker.cargo] || ["ss", "examen"];
+        const wDocs = dData ? dData.filter(d => d.trabajador_id === worker.id) : [];
+        
+        let hasVencida = false;
+        let hasFaltante = false;
+        let hasProxima = false;
+
+        reqDocs.forEach(req => {
+          const doc = wDocs.find(d => d.tipo_documento === req);
+          if (!doc) {
+            hasFaltante = true;
+          } else if (doc.estado_aprobacion === 'Rechazado' || doc.estado === 'Vencido') {
+            hasVencida = true;
+          } else if (doc.estado === 'Próximo a Vencer') {
+            hasProxima = true;
+          } else if (doc.estado_aprobacion !== 'Aprobado') {
+            hasFaltante = true; // Pendiente counts as missing/incomplete
+          }
+        });
+
+        let docStatus = "Completa";
+        if (hasVencida) docStatus = "Vencida";
+        else if (hasFaltante) docStatus = "Faltante";
+        else if (hasProxima) docStatus = "Próxima";
+
+        return { ...worker, calculated_doc_status: docStatus };
+      });
+      setPersonal(personalWithStatus);
+    }
 
     // 2. Fetch Contratistas
     const { data: cData } = await supabase.from('contratistas').select('nombre').order('nombre', { ascending: true });
@@ -153,7 +194,17 @@ export default function PersonalOperativoPage() {
     }
   };
 
-  const csvTemplate = "data:text/csv;charset=utf-8,%EF%BB%BFDocumento;Nombre;Cargo;Contratista;Estado ARL%0A1045223112;Carlos Mendoza;Soldador 1A;Metalprest S.A.S;Al Día";
+  const renderDocBadge = (status: string) => {
+    switch (status) {
+      case "Completa": return <Badge className="bg-green-100 text-green-800 hover:bg-green-100"><FileCheck className="w-3 h-3 mr-1" /> Completa</Badge>;
+      case "Faltante": return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100"><FileX className="w-3 h-3 mr-1" /> Faltante</Badge>;
+      case "Vencida": return <Badge className="bg-red-100 text-red-800 hover:bg-red-100"><FileX className="w-3 h-3 mr-1" /> Vencida</Badge>;
+      case "Próxima": return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100"><AlertCircle className="w-3 h-3 mr-1" /> Próxima</Badge>;
+      default: return <Badge className="bg-slate-100 text-slate-800 hover:bg-slate-100">{status}</Badge>;
+    }
+  };
+
+  const csvTemplate = "data:text/csv;charset=utf-8,%EF%BB%BFDocumento;Nombre;Cargo;Contratista%0A1045223112;Carlos Mendoza;Soldador 1A;Metalprest S.A.S";
   
   const puedeEditar = userProfile?.rol === 'lider_hse' || userProfile?.rol === 'admin' || userProfile?.rol === 'lider_contratista' || userProfile?.rol === 'ADMINISTRADOR';
 
@@ -327,11 +378,7 @@ export default function PersonalOperativoPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
-                      {p.estado_arl === "Al Día" ? (
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100"><FileCheck className="w-3 h-3 mr-1" /> Al Día</Badge>
-                      ) : (
-                        <Badge className="bg-red-100 text-red-800 hover:bg-red-100"><FileX className="w-3 h-3 mr-1" /> Vencida</Badge>
-                      )}
+                      {renderDocBadge(p.calculated_doc_status)}
                     </TableCell>
                     {puedeEditar && (
                       <TableCell className="text-right px-6">
