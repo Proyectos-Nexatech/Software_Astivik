@@ -32,6 +32,18 @@ export default function DocumentosHSEPage() {
   // Auth Profile State
   const [userProfile, setUserProfile] = useState<any>(null);
 
+  const calculateEstado = (dateStr: string) => {
+    if (!dateStr) return "Faltante";
+    const todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
+    const expiryDate = new Date(dateStr + 'T00:00:00');
+    const diffDays = Math.ceil((expiryDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return "Vencido";
+    if (diffDays <= 30) return "Por Vencer";
+    return "Vigente";
+  };
+
   const fetchData = async () => {
     setLoading(true);
     
@@ -108,7 +120,7 @@ export default function DocumentosHSEPage() {
           docsMap[d.tipo_documento] = {
             expedicion: expedicionInvertida,
             vigencia: d.fecha_vencimiento,
-            estado: d.estado,
+            estado: calculateEstado(d.fecha_vencimiento), // Dinámico
             archivo_url: d.archivo_url,
             estado_aprobacion: d.estado_aprobacion || "Pendiente",
             id: d.id // DB id for the document row
@@ -138,17 +150,7 @@ export default function DocumentosHSEPage() {
     fetchData();
   }, []);
 
-  const calculateEstado = (dateStr: string) => {
-    if (!dateStr) return "Faltante";
-    const todayDate = new Date();
-    todayDate.setHours(0, 0, 0, 0);
-    const expiryDate = new Date(dateStr + 'T00:00:00');
-    const diffDays = Math.ceil((expiryDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) return "Vencido";
-    if (diffDays <= 30) return "Por Vencer";
-    return "Vigente";
-  };
+
 
   const calculateVencimiento = (docKey: string, expedicionDate: string) => {
     if (!expedicionDate) return "";
