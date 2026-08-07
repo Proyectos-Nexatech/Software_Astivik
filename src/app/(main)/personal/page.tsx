@@ -62,6 +62,18 @@ export default function PersonalOperativoPage() {
     // 2. Fetch Documentos HSE
     const { data: dData } = await supabase.from('documentos_hse').select('*');
 
+    const calculateEstado = (dateStr: string) => {
+      if (!dateStr) return "Faltante";
+      const todayDate = new Date();
+      todayDate.setHours(0, 0, 0, 0);
+      const expiryDate = new Date(dateStr + 'T00:00:00');
+      const diffDays = Math.ceil((expiryDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays < 0) return "Vencido";
+      if (diffDays <= 30) return "Por Vencer";
+      return "Vigente";
+    };
+
     if (tData) {
       const personalWithStatus = tData.map(worker => {
         const reqDocs = requiredDocsByCargo[worker.cargo] || ["ss", "examen"];
@@ -73,14 +85,16 @@ export default function PersonalOperativoPage() {
 
         reqDocs.forEach(req => {
           const doc = wDocs.find(d => d.tipo_documento === req);
+          const estadoDin = doc ? calculateEstado(doc.fecha_vencimiento) : "Faltante";
+          
           if (!doc) {
             hasFaltante = true;
-          } else if (doc.estado_aprobacion === 'Rechazado' || doc.estado === 'Vencido') {
+          } else if (doc.estado_aprobacion === 'Rechazado' || estadoDin === 'Vencido') {
             hasVencida = true;
-          } else if (doc.estado === 'Próximo a Vencer') {
+          } else if (estadoDin === 'Por Vencer') {
             hasProxima = true;
           } else if (doc.estado_aprobacion !== 'Aprobado') {
-            hasFaltante = true; // Pendiente counts as missing/incomplete
+            hasFaltante = true;
           }
         });
 
@@ -122,7 +136,8 @@ export default function PersonalOperativoPage() {
           setIsModalOpen(false);
           setEditingId(null);
         } else {
-          alert("Error al actualizar trabajador.");
+          console.error(error);
+          alert("Error al actualizar trabajador: " + (error?.message || "Desconocido"));
         }
       } else {
         const { data, error } = await supabase.from('trabajadores').insert([{
