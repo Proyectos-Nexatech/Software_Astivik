@@ -409,7 +409,7 @@ export default function ControlAccesoPage() {
                     {registrosRecientes.map(r => (
                       <TableRow key={r.id}>
                         <TableCell className="text-xs font-medium text-slate-500">
-                          {new Date(r.fecha_hora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          {new Date(r.fecha_hora).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit' })}
                         </TableCell>
                         <TableCell>
                           <p className="font-bold text-slate-800 text-sm">{r.trabajadores?.nombre}</p>

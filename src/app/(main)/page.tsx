@@ -104,13 +104,12 @@ export default function DashboardPage() {
     
     let queryAccesos = supabase
       .from('registros_acceso')
-      .select('*')
-      .gte('fecha_hora', today.toISOString());
+      .select('*');
       
     if (filtroProyecto !== 'all') {
       const selectedProjectId = pData?.find((p: any) => p.nombre === filtroProyecto)?.id;
       if (selectedProjectId) {
-        queryAccesos = queryAccesos.eq('proyecto_destino', selectedProjectId);
+        queryAccesos = queryAccesos.eq('proyecto_id', selectedProjectId);
       }
     }
 
@@ -118,9 +117,18 @@ export default function DashboardPage() {
 
     let aforo = 0;
     if (accesos) {
-      const entradas = accesos.filter(a => a.tipo === 'ENTRADA').length;
-      const salidas = accesos.filter(a => a.tipo === 'SALIDA').length;
-      aforo = Math.max(0, entradas - salidas);
+      const latestAccessMap = new Map();
+      accesos.forEach(a => {
+        // Ignorar si no tiene trabajador_id (ej. visitantes)
+        if (!a.trabajador_id && !a.visitante_id) return;
+        const idKey = a.trabajador_id || a.visitante_id;
+        
+        const existing = latestAccessMap.get(idKey);
+        if (!existing || new Date(a.fecha_hora) > new Date(existing.fecha_hora)) {
+          latestAccessMap.set(idKey, a);
+        }
+      });
+      aforo = Array.from(latestAccessMap.values()).filter(a => a.tipo === 'ENTRADA').length;
     }
 
     setStats({
