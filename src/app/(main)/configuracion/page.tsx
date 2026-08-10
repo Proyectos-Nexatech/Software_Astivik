@@ -110,7 +110,12 @@ export default function ConfiguracionPage() {
     e.preventDefault();
     setSavingUser(true);
     if (editingUser) {
-      const res = await actualizarUsuario(editingUser.id, userForm.rol, userForm.estado);
+      const res = await actualizarUsuario({
+        id: editingUser.id,
+        nombre: userForm.nombre,
+        rol: userForm.rol,
+        estado: userForm.estado
+      });
       if (!res.success) alert(res.error);
     } else {
       const res = await crearUsuario({
@@ -424,12 +429,10 @@ export default function ConfiguracionPage() {
             <DialogTitle>{editingUser ? "Editar Usuario" : "Nuevo Usuario"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSaveUser} className="space-y-4">
+            <div><Label>Nombre</Label><Input required value={userForm.nombre || ""} onChange={e => setUserForm({...userForm, nombre: e.target.value})} /></div>
+            <div><Label>Email</Label><Input type="email" required value={userForm.email || ""} onChange={e => setUserForm({...userForm, email: e.target.value})} disabled={!!editingUser} title={editingUser ? "No se puede cambiar el correo de un usuario existente" : ""} /></div>
             {!editingUser && (
-              <>
-                <div><Label>Nombre</Label><Input required value={userForm.nombre || ""} onChange={e => setUserForm({...userForm, nombre: e.target.value})} /></div>
-                <div><Label>Email</Label><Input type="email" required value={userForm.email || ""} onChange={e => setUserForm({...userForm, email: e.target.value})} /></div>
-                <div><Label>Contraseña</Label><Input type="password" required value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} /></div>
-              </>
+              <div><Label>Contraseña</Label><Input type="password" required value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} /></div>
             )}
             <div>
               <Label>Rol</Label>

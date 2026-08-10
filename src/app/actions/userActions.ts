@@ -70,7 +70,8 @@ export async function crearUsuario(data: any) {
   }
 }
 
-export async function actualizarUsuario(id: string, rol: string, estado: string) {
+export async function actualizarUsuario(data: any) {
+  const { id, rol, estado, nombre } = data;
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return { success: false, error: "Falta configurar SUPABASE_SERVICE_ROLE_KEY en el servidor." };
   }
@@ -78,7 +79,7 @@ export async function actualizarUsuario(id: string, rol: string, estado: string)
   try {
     const { error } = await supabaseAdmin
       .from('perfiles_usuario')
-      .update({ rol, estado })
+      .update({ rol, estado, nombre })
       .eq('id', id);
 
     if (error) throw error;
