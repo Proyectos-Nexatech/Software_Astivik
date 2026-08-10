@@ -7,24 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Plus, ShieldCheck, Mail, UserPlus, MoreVertical, HardHat, CheckSquare, Clock, Save, Loader2 } from "lucide-react";
+import { Search, Plus, ShieldCheck, Mail, UserPlus, MoreVertical, HardHat, CheckSquare, Clock, Save, Loader2, Edit, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { crearUsuario, actualizarUsuario, eliminarUsuario, getUsuarios } from "@/app/actions/userActions";
 import { createClient } from "@/utils/supabase/client";
 
-const usuariosData = [
-  { id: 1, nombre: "Carlos Mendoza", email: "cmendoza@astivik.com", rol: "ADMINISTRADOR", estado: "Activo" },
-  { id: 2, nombre: "Laura Gómez", email: "lgomez@astivik.com", rol: "INGENIERO", estado: "Activo" },
-  { id: 3, nombre: "Pedro Suárez", email: "psuarez@metalprest.com", rol: "CONTRATISTA", estado: "Activo" },
-  { id: 4, nombre: "Diana Rojas", email: "drojas@astivik.com", rol: "SUPERVISOR", estado: "Inactivo" },
-  { id: 5, nombre: "Juan Pérez", email: "jperez@astivik.com", rol: "GUARDIA", estado: "Activo" },
-];
+const usuariosData: any[] = [];
 
-const requisitosData = [
-  { cargo: "Soldador 1A", ss: true, examen: true, alturas: true, confinados: true, soldadura: true },
-  { cargo: "Sandblaster", ss: true, examen: true, alturas: true, confinados: true, soldadura: false },
-  { cargo: "Electricista", ss: true, examen: true, alturas: true, confinados: false, soldadura: false },
-  { cargo: "Administrativo", ss: true, examen: true, alturas: false, confinados: false, soldadura: false },
-  { cargo: "Conductor", ss: true, examen: true, alturas: false, confinados: false, soldadura: false },
-];
+const requisitosData: any[] = [];
 
 const docLabels: Record<string, string> = {
   ss: "Seguridad Social (ARL/EPS)",
@@ -36,7 +27,7 @@ const docLabels: Record<string, string> = {
 
 export default function ConfiguracionPage() {
   const supabase = createClient();
-  const [usuarios] = useState(usuariosData);
+  const [usuarios, setUsuarios] = useState(usuariosData);
   const [requisitos, setRequisitos] = useState(requisitosData);
   const [activeTab, setActiveTab] = useState("usuarios");
   
@@ -46,22 +37,45 @@ export default function ConfiguracionPage() {
   });
   const [savingVigencias, setSavingVigencias] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Modals state
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [userForm, setUserForm] = useState({ nombre: "", email: "", rol: "CONTRATISTA", password: "", estado: "Activo" });
+  const [savingUser, setSavingUser] = useState(false);
+  
+  const [isReqModalOpen, setIsReqModalOpen] = useState(false);
+  const [reqForm, setReqForm] = useState({ cargo: "", ss: true, examen: true, alturas: false, confinados: false, soldadura: false });
+  const [savingReq, setSavingReq] = useState(false);
+
+
+  
+  const fetchData = async () => {
+    setLoading(true);
+    // 1. Vigencias
+    const { data: vData } = await supabase.from('configuracion_vigencias').select('*');
+    if (vData) {
+      const dbVigencias: Record<string, number> = {};
+      vData.forEach((row: any) => { dbVigencias[row.tipo_documento] = row.periodo_meses; });
+      setVigencias(prev => ({ ...prev, ...dbVigencias }));
+    }
+    
+    // 2. Usuarios
+    const uData = await getUsuarios();
+    // @ts-ignore
+    setUsuarios(uData || []);
+
+    // 3. Requisitos
+    const { data: rData } = await supabase.from('configuracion_requisitos').select('*').order('cargo');
+    // @ts-ignore
+    if (rData && rData.length > 0) setRequisitos(rData);
+
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetchVigencias = async () => {
-      setLoading(true);
-      const { data, error } = await supabase.from('configuracion_vigencias').select('*');
-      if (!error && data && data.length > 0) {
-        const dbVigencias: Record<string, number> = {};
-        data.forEach((row: any) => {
-          dbVigencias[row.tipo_documento] = row.periodo_meses;
-        });
-        setVigencias(prev => ({ ...prev, ...dbVigencias }));
-      }
-      setLoading(false);
-    };
-    fetchVigencias();
+    fetchData();
   }, []);
+
 
   const handleVigenciaChange = async (tipo_documento: string, meses: number) => {
     // Optimistic UI Update
@@ -80,11 +94,65 @@ export default function ConfiguracionPage() {
     }
   };
 
-  const toggleRequisito = (idx: number, field: keyof typeof requisitosData[0]) => {
+  
+  const toggleRequisito = async (idx: number, field: string) => {
     const newReqs = [...requisitos];
-    // @ts-ignore
-    newReqs[idx][field] = !newReqs[idx][field];
+    const req = newReqs[idx];
+    req[field] = !req[field];
     setRequisitos(newReqs);
+
+    await supabase.from('configuracion_requisitos').update({ [field]: req[field] }).eq('cargo', req.cargo);
+  };
+
+
+  
+  const handleSaveUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingUser(true);
+    if (editingUser) {
+      const res = await actualizarUsuario(editingUser.id, userForm.rol, userForm.estado);
+      if (!res.success) alert(res.error);
+    } else {
+      const fd = new FormData();
+      fd.append("nombre", userForm.nombre);
+      fd.append("email", userForm.email);
+      fd.append("rol", userForm.rol);
+      fd.append("password", userForm.password);
+      const res = await crearUsuario(fd);
+      if (!res.success) alert(res.error);
+    }
+    setSavingUser(false);
+    setIsUserModalOpen(false);
+    fetchData();
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (confirm("¿Estás seguro de eliminar este usuario?")) {
+      const res = await eliminarUsuario(id);
+      if (!res.success) alert(res.error);
+      fetchData();
+    }
+  };
+
+  const openNewUser = () => {
+    setEditingUser(null);
+    setUserForm({ nombre: "", email: "", rol: "CONTRATISTA", password: "", estado: "Activo" });
+    setIsUserModalOpen(true);
+  };
+
+  const openEditUser = (user: any) => {
+    setEditingUser(user);
+    setUserForm({ nombre: user.nombre, email: user.email, rol: user.rol, password: "", estado: user.estado });
+    setIsUserModalOpen(true);
+  };
+
+  const handleSaveReq = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingReq(true);
+    await supabase.from('configuracion_requisitos').insert(reqForm);
+    setSavingReq(false);
+    setIsReqModalOpen(false);
+    fetchData();
   };
 
   const getRoleBadgeColor = (rol: string) => {
@@ -136,7 +204,7 @@ export default function ConfiguracionPage() {
                 <CardTitle className="text-lg font-bold">Cuentas de Acceso</CardTitle>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="bg-white"><Mail className="w-3 h-3 mr-2" /> Invitar</Button>
-                  <Button size="sm" className="bg-slate-900 text-white"><UserPlus className="w-3 h-3 mr-2" /> NUEVO USUARIO</Button>
+                  <Button size="sm" onClick={openNewUser} className="bg-slate-900 text-white"><UserPlus className="w-3 h-3 mr-2" /> NUEVO USUARIO</Button>
                 </div>
               </div>
             </CardHeader>
@@ -147,7 +215,7 @@ export default function ConfiguracionPage() {
                     <TableHead className="font-semibold px-6">Nombre</TableHead>
                     <TableHead className="font-semibold">Correo / Usuario</TableHead>
                     <TableHead className="font-semibold">Rol Asignado</TableHead>
-                    <TableHead className="font-semibold">Estado</TableHead>
+                    <TableHead className="font-semibold">Estado</TableHead><TableHead className="text-right"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -211,7 +279,7 @@ export default function ConfiguracionPage() {
                   Define qué documentos son obligatorios según la especialidad del trabajador.
                 </CardDescription>
               </div>
-              <Button className="bg-slate-900 text-white"><Plus className="w-4 h-4 mr-2" /> NUEVO CARGO</Button>
+              <Button onClick={() => setIsReqModalOpen(true)} className="bg-slate-900 text-white"><Plus className="w-4 h-4 mr-2" /> NUEVO CARGO</Button>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <Table>

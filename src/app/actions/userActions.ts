@@ -1,0 +1,116 @@
+"use server";
+
+import { createClient } from "@supabase/supabase-js";
+import { revalidatePath } from "next/cache";
+
+// Necesitamos el Service Role Key para poder gestionar usuarios (crear/eliminar) usando la Admin API
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+  process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
+
+export async function getUsuarios() {
+  const { data, error } = await supabaseAdmin
+    .from('perfiles_usuario')
+    .select('*')
+    .order('created_at', { ascending: false });
+    
+  if (error) {
+    console.error("Error fetching users:", error);
+    return [];
+  }
+  return data;
+}
+
+export async function crearUsuario(formData: FormData) {
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+  const nombre = formData.get("nombre") as string;
+  const rol = formData.get("rol") as string;
+  
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { success: false, error: "Falta configurar SUPABASE_SERVICE_ROLE_KEY en el servidor para crear usuarios." };
+  }
+
+  try {
+    // 1. Crear en Auth
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true // Auto-confirm for admin created users
+    });
+
+    if (authError) throw authError;
+
+    // 2. Crear perfil en perfiles_usuario
+    if (authData.user) {
+      const { error: profileError } = await supabaseAdmin.from('perfiles_usuario').insert({
+        id: authData.user.id,
+        nombre,
+        email, // Keep email in sync if the table has it
+        rol,
+        estado: 'Activo'
+      });
+
+      if (profileError) {
+        // Fallback: delete auth user if profile fails
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        throw profileError;
+      }
+    }
+
+    revalidatePath("/configuracion");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error creating user:", err);
+    return { success: false, error: err.message || "Error desconocido al crear usuario" };
+  }
+}
+
+export async function actualizarUsuario(id: string, rol: string, estado: string) {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { success: false, error: "Falta configurar SUPABASE_SERVICE_ROLE_KEY en el servidor." };
+  }
+
+  try {
+    const { error } = await supabaseAdmin
+      .from('perfiles_usuario')
+      .update({ rol, estado })
+      .eq('id', id);
+
+    if (error) throw error;
+    
+    revalidatePath("/configuracion");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error updating user:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function eliminarUsuario(id: string) {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { success: false, error: "Falta configurar SUPABASE_SERVICE_ROLE_KEY en el servidor." };
+  }
+
+  try {
+    // 1. Eliminar de Auth (esto eliminará en cascada de perfiles_usuario si la DB está configurada así)
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id);
+    if (authError) throw authError;
+    
+    // Por si no hay borrado en cascada
+    await supabaseAdmin.from('perfiles_usuario').delete().eq('id', id);
+
+    revalidatePath("/configuracion");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error deleting user:", err);
+    return { success: false, error: err.message };
+  }
+}
