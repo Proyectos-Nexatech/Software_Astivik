@@ -404,6 +404,86 @@ export default function ConfiguracionPage() {
           </div>
         </div>
       )}
+
+      {/* Modals */}
+      <Dialog open={isUserModalOpen} onOpenChange={setIsUserModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingUser ? "Editar Usuario" : "Nuevo Usuario"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveUser} className="space-y-4">
+            {!editingUser && (
+              <>
+                <div><Label>Nombre</Label><Input required value={userForm.nombre} onChange={e => setUserForm({...userForm, nombre: e.target.value})} /></div>
+                <div><Label>Email</Label><Input type="email" required value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} /></div>
+                <div><Label>Contraseña</Label><Input type="password" required value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} /></div>
+              </>
+            )}
+            <div>
+              <Label>Rol</Label>
+              <Select value={userForm.rol} onValueChange={v => setUserForm({...userForm, rol: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
+                  <SelectItem value="INGENIERO">Ingeniero</SelectItem>
+                  <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
+                  <SelectItem value="GUARDIA">Guardia</SelectItem>
+                  <SelectItem value="CONTRATISTA">Contratista</SelectItem>
+                  <SelectItem value="lider_hse">Líder HSE</SelectItem>
+                  <SelectItem value="lider_contratista">Líder Contratista</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editingUser && (
+              <div>
+                <Label>Estado</Label>
+                <Select value={userForm.estado} onValueChange={v => setUserForm({...userForm, estado: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Activo">Activo</SelectItem>
+                    <SelectItem value="Inactivo">Inactivo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsUserModalOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={savingUser}>{savingUser ? "Guardando..." : "Guardar"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isReqModalOpen} onOpenChange={setIsReqModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nuevo Cargo / Especialidad</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveReq} className="space-y-4">
+            <div><Label>Nombre del Cargo</Label><Input required value={reqForm.cargo} onChange={e => setReqForm({...reqForm, cargo: e.target.value})} /></div>
+            <div className="flex gap-4 items-center">
+              <input type="checkbox" checked={reqForm.ss} onChange={e => setReqForm({...reqForm, ss: e.target.checked})} /> <Label>Seguridad Social</Label>
+            </div>
+            <div className="flex gap-4 items-center">
+              <input type="checkbox" checked={reqForm.examen} onChange={e => setReqForm({...reqForm, examen: e.target.checked})} /> <Label>Examen Médico</Label>
+            </div>
+            <div className="flex gap-4 items-center">
+              <input type="checkbox" checked={reqForm.alturas} onChange={e => setReqForm({...reqForm, alturas: e.target.checked})} /> <Label>Curso Alturas</Label>
+            </div>
+            <div className="flex gap-4 items-center">
+              <input type="checkbox" checked={reqForm.confinados} onChange={e => setReqForm({...reqForm, confinados: e.target.checked})} /> <Label>Confinados</Label>
+            </div>
+            <div className="flex gap-4 items-center">
+              <input type="checkbox" checked={reqForm.soldadura} onChange={e => setReqForm({...reqForm, soldadura: e.target.checked})} /> <Label>Soldadura</Label>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsReqModalOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={savingReq}>{savingReq ? "Guardando..." : "Guardar"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
