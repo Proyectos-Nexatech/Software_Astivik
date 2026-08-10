@@ -5,8 +5,8 @@ import { revalidatePath } from "next/cache";
 
 // Necesitamos el Service Role Key para poder gestionar usuarios (crear/eliminar) usando la Admin API
 const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dummy.supabase.co",
+  process.env.SUPABASE_SERVICE_ROLE_KEY || "dummy-key",
   {
     auth: {
       autoRefreshToken: false,
