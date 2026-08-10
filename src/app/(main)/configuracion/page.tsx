@@ -225,8 +225,8 @@ export default function ConfiguracionPage() {
                 <TableBody>
                   {usuarios.map((usuario) => (
                     <TableRow key={usuario.id}>
-                      <TableCell className="font-medium text-slate-900 px-6 py-3">{usuario.nombre}</TableCell>
-                      <TableCell className="text-slate-500 text-sm">{usuario.email}</TableCell>
+                      <TableCell className="font-medium text-slate-900 px-6 py-3">{usuario.nombre || <span className="text-slate-400 italic">Sin nombre</span>}</TableCell>
+                      <TableCell className="text-slate-500 text-sm">{usuario.email || <span className="text-slate-400 italic">Sin correo</span>}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={`text-[10px] font-bold tracking-wider ${getRoleBadgeColor(usuario.rol)}`}>
                           {usuario.rol}
@@ -235,8 +235,16 @@ export default function ConfiguracionPage() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full ${usuario.estado === 'Activo' ? 'bg-green-500' : 'bg-slate-300'}`}></div>
-                          <span className={`text-sm ${usuario.estado === 'Activo' ? 'text-slate-700' : 'text-slate-400'}`}>{usuario.estado}</span>
+                          <span className={`text-sm ${usuario.estado === 'Activo' ? 'text-slate-700' : 'text-slate-400'}`}>{usuario.estado || 'Inactivo'}</span>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={() => openEditUser(usuario)}>
+                          <Edit className="w-4 h-4 text-slate-500 hover:text-blue-600" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(usuario.id)}>
+                          <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-600" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
