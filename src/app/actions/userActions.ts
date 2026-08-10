@@ -99,9 +99,12 @@ export async function eliminarUsuario(id: string) {
   try {
     // 1. Eliminar de Auth (esto eliminará en cascada de perfiles_usuario si la DB está configurada así)
     const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id);
-    if (authError) throw authError;
+    // Ignoramos el error si el usuario ya no existe en Auth, para poder borrar perfiles huérfanos
+    if (authError && !authError.message.includes("not found") && !authError.message.includes("not exist")) {
+      console.warn("Auth delete warning:", authError);
+    }
     
-    // Por si no hay borrado en cascada
+    // 2. Eliminar explícitamente de perfiles_usuario por si acaso
     await supabaseAdmin.from('perfiles_usuario').delete().eq('id', id);
 
     revalidatePath("/configuracion");

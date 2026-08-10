@@ -418,8 +418,8 @@ export default function ConfiguracionPage() {
           <form onSubmit={handleSaveUser} className="space-y-4">
             {!editingUser && (
               <>
-                <div><Label>Nombre</Label><Input required value={userForm.nombre} onChange={e => setUserForm({...userForm, nombre: e.target.value})} /></div>
-                <div><Label>Email</Label><Input type="email" required value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} /></div>
+                <div><Label>Nombre</Label><Input required value={userForm.nombre || ""} onChange={e => setUserForm({...userForm, nombre: e.target.value})} /></div>
+                <div><Label>Email</Label><Input type="email" required value={userForm.email || ""} onChange={e => setUserForm({...userForm, email: e.target.value})} /></div>
                 <div><Label>Contraseña</Label><Input type="password" required value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} /></div>
               </>
             )}
