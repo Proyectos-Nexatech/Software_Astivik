@@ -421,7 +421,7 @@ export default function ConfiguracionPage() {
             )}
             <div>
               <Label>Rol</Label>
-              <Select value={userForm.rol} onValueChange={v => setUserForm({...userForm, rol: v})}>
+              <Select value={userForm.rol || ""} onValueChange={v => setUserForm({...userForm, rol: v})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
@@ -437,7 +437,7 @@ export default function ConfiguracionPage() {
             {editingUser && (
               <div>
                 <Label>Estado</Label>
-                <Select value={userForm.estado} onValueChange={v => setUserForm({...userForm, estado: v})}>
+                <Select value={userForm.estado || ""} onValueChange={v => setUserForm({...userForm, estado: v})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Activo">Activo</SelectItem>
