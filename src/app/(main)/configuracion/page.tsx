@@ -116,7 +116,11 @@ export default function ConfiguracionPage() {
         rol: userForm.rol,
         estado: userForm.estado
       });
-      if (!res.success) alert(res.error);
+      if (!res.success) {
+        alert(res.error);
+        setSavingUser(false);
+        return;
+      }
     } else {
       const res = await crearUsuario({
         nombre: userForm.nombre,
@@ -124,7 +128,11 @@ export default function ConfiguracionPage() {
         rol: userForm.rol,
         password: userForm.password
       });
-      if (!res.success) alert(res.error);
+      if (!res.success) {
+        alert(res.error);
+        setSavingUser(false);
+        return;
+      }
     }
     setSavingUser(false);
     setIsUserModalOpen(false);
