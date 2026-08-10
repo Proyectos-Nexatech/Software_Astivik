@@ -449,7 +449,7 @@ export default function DocumentosHSEPage() {
                 const isRechazado = doc.estado_aprobacion === 'Rechazado';
 
                 return (
-                  <div key={docKey} className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-lg border ${isAprobado ? 'border-green-200 bg-green-50/30' : isRechazado ? 'border-red-200 bg-red-50/30' : 'border-slate-200 bg-white'}`}>
+                  <div key={docKey} className={`flex flex-col lg:flex-row lg:items-center flex-wrap justify-between gap-4 p-4 rounded-lg border ${isAprobado ? 'border-green-200 bg-green-50/30' : isRechazado ? 'border-red-200 bg-red-50/30' : 'border-slate-200 bg-white'}`}>
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center gap-2">
                         <Label className="font-bold text-slate-800 text-sm uppercase tracking-wide">{docLabels[docKey]}</Label>
@@ -539,7 +539,7 @@ export default function DocumentosHSEPage() {
             </div>
           )}
           
-          <DialogFooter className="bg-slate-50 -mx-6 -mb-6 p-4 border-t border-slate-100 mt-2">
+          <DialogFooter className="bg-slate-50 border-t border-slate-100 mt-2">
             <Button onClick={() => setIsModalOpen(false)} variant="outline">Cerrar Expediente</Button>
           </DialogFooter>
         </DialogContent>
