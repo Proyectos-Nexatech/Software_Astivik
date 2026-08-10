@@ -28,11 +28,8 @@ export async function getUsuarios() {
   return data;
 }
 
-export async function crearUsuario(formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const nombre = formData.get("nombre") as string;
-  const rol = formData.get("rol") as string;
+export async function crearUsuario(data: any) {
+  const { email, password, nombre, rol } = data;
   
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return { success: false, error: "Falta configurar SUPABASE_SERVICE_ROLE_KEY en el servidor para crear usuarios." };

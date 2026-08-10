@@ -113,12 +113,12 @@ export default function ConfiguracionPage() {
       const res = await actualizarUsuario(editingUser.id, userForm.rol, userForm.estado);
       if (!res.success) alert(res.error);
     } else {
-      const fd = new FormData();
-      fd.append("nombre", userForm.nombre);
-      fd.append("email", userForm.email);
-      fd.append("rol", userForm.rol);
-      fd.append("password", userForm.password);
-      const res = await crearUsuario(fd);
+      const res = await crearUsuario({
+        nombre: userForm.nombre,
+        email: userForm.email,
+        rol: userForm.rol,
+        password: userForm.password
+      });
       if (!res.success) alert(res.error);
     }
     setSavingUser(false);
@@ -149,10 +149,14 @@ export default function ConfiguracionPage() {
   const handleSaveReq = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingReq(true);
-    await supabase.from('configuracion_requisitos').insert(reqForm);
+    const { error } = await supabase.from('configuracion_requisitos').insert(reqForm);
     setSavingReq(false);
-    setIsReqModalOpen(false);
-    fetchData();
+    if (error) {
+      alert("Error al crear el cargo: " + error.message + " (¿Ejecutaste el script SQL en Supabase?)");
+    } else {
+      setIsReqModalOpen(false);
+      fetchData();
+    }
   };
 
   const getRoleBadgeColor = (rol: string) => {
