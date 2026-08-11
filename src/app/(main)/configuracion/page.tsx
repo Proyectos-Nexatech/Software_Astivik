@@ -110,25 +110,33 @@ export default function ConfiguracionPage() {
     e.preventDefault();
     setSavingUser(true);
     try {
+      // Wrapper to add timeout to server actions
+      const withTimeout = (promise: Promise<any>, ms: number = 8000) => {
+        return Promise.race([
+          promise,
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: El servidor tardó demasiado en responder.")), ms))
+        ]);
+      };
+
       if (editingUser) {
-        const res = await actualizarUsuario({
+        const res = await withTimeout(actualizarUsuario({
           id: editingUser.id,
           nombre: userForm.nombre,
           rol: userForm.rol,
           estado: userForm.estado
-        });
+        }));
         if (!res.success) {
           alert(res.error);
           setSavingUser(false);
           return;
         }
       } else {
-        const res = await crearUsuario({
+        const res = await withTimeout(crearUsuario({
           nombre: userForm.nombre,
           email: userForm.email,
           rol: userForm.rol,
           password: userForm.password
-        });
+        }));
         if (!res.success) {
           alert(res.error);
           setSavingUser(false);
