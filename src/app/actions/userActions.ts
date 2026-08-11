@@ -50,7 +50,6 @@ export async function crearUsuario(data: any) {
       const { error: profileError } = await supabaseAdmin.from('perfiles_usuario').insert({
         id: authData.user.id,
         nombre,
-        email, // Keep email in sync if the table has it
         rol,
         estado: 'Activo'
       });
