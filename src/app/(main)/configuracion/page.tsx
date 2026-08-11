@@ -109,34 +109,40 @@ export default function ConfiguracionPage() {
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingUser(true);
-    if (editingUser) {
-      const res = await actualizarUsuario({
-        id: editingUser.id,
-        nombre: userForm.nombre,
-        rol: userForm.rol,
-        estado: userForm.estado
-      });
-      if (!res.success) {
-        alert(res.error);
-        setSavingUser(false);
-        return;
+    try {
+      if (editingUser) {
+        const res = await actualizarUsuario({
+          id: editingUser.id,
+          nombre: userForm.nombre,
+          rol: userForm.rol,
+          estado: userForm.estado
+        });
+        if (!res.success) {
+          alert(res.error);
+          setSavingUser(false);
+          return;
+        }
+      } else {
+        const res = await crearUsuario({
+          nombre: userForm.nombre,
+          email: userForm.email,
+          rol: userForm.rol,
+          password: userForm.password
+        });
+        if (!res.success) {
+          alert(res.error);
+          setSavingUser(false);
+          return;
+        }
       }
-    } else {
-      const res = await crearUsuario({
-        nombre: userForm.nombre,
-        email: userForm.email,
-        rol: userForm.rol,
-        password: userForm.password
-      });
-      if (!res.success) {
-        alert(res.error);
-        setSavingUser(false);
-        return;
-      }
+      setSavingUser(false);
+      setIsUserModalOpen(false);
+      fetchData();
+    } catch (error: any) {
+      console.error("Action error:", error);
+      alert("Error del servidor: " + (error.message || "Fallo de conexión o timeout. Intenta de nuevo."));
+      setSavingUser(false);
     }
-    setSavingUser(false);
-    setIsUserModalOpen(false);
-    fetchData();
   };
 
   const handleDeleteUser = async (id: string) => {
