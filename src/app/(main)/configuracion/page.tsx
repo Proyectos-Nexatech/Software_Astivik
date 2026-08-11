@@ -167,10 +167,16 @@ export default function ConfiguracionPage() {
     setIsUserModalOpen(true);
   };
 
-  const openEditUser = (user: any) => {
-    setEditingUser(user);
-    setUserForm({ nombre: user.nombre, email: user.email, rol: user.rol, password: "", estado: user.estado });
-    setIsUserModalOpen(true);
+  const openEditUser = (usuario: any) => {
+      setEditingUser(usuario);
+      setUserForm({ 
+        nombre: usuario.nombre_completo || "", 
+        email: usuario.email || "", 
+        password: "", 
+        rol: usuario.rol, 
+        estado: usuario.estado || 'Activo' 
+      });
+      setIsUserModalOpen(true);
   };
 
   const handleSaveReq = async (e: React.FormEvent) => {
@@ -252,7 +258,7 @@ export default function ConfiguracionPage() {
                 <TableBody>
                   {usuarios.map((usuario) => (
                     <TableRow key={usuario.id}>
-                      <TableCell className="font-medium text-slate-900 px-6 py-3">{usuario.nombre || <span className="text-slate-400 italic">Sin nombre</span>}</TableCell>
+                      <TableCell className="font-medium text-slate-900 px-6 py-3">{usuario.nombre_completo || <span className="text-slate-400 italic">Sin nombre</span>}</TableCell>
                       <TableCell className="text-slate-500 text-sm">{usuario.email || <span className="text-slate-400 italic">Sin correo</span>}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={`text-[10px] font-bold tracking-wider ${getRoleBadgeColor(usuario.rol)}`}>

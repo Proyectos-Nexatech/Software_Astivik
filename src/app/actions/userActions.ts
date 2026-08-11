@@ -49,7 +49,7 @@ export async function crearUsuario(data: any) {
     if (authData.user) {
       const { error: profileError } = await supabaseAdmin.from('perfiles_usuario').insert({
         id: authData.user.id,
-        nombre,
+        nombre_completo: nombre,
         rol,
         estado: 'Activo'
       });
@@ -78,7 +78,7 @@ export async function actualizarUsuario(data: any) {
   try {
     const { error } = await supabaseAdmin
       .from('perfiles_usuario')
-      .update({ rol, estado, nombre })
+      .update({ nombre_completo: nombre, rol, estado })
       .eq('id', id);
 
     if (error) throw error;
