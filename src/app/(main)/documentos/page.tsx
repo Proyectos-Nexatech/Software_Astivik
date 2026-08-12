@@ -53,11 +53,19 @@ export default function DocumentosHSEPage() {
     let empresaFiltro = null;
     
     if (user) {
-      const { data: pData } = await supabase.from('perfiles_usuario').select('*, contratistas(nombre)').eq('id', user.id).single();
-      profile = pData;
-      setUserProfile(pData);
-      if (pData?.rol === 'lider_contratista' && pData?.contratistas?.nombre) {
-        empresaFiltro = pData.contratistas.nombre;
+      const { data: pData } = await supabase.from('perfiles_usuario').select('*').eq('id', user.id).single();
+      if (pData) {
+        if (pData.contratista_id) {
+          const { data: cData } = await supabase.from('contratistas').select('nombre').eq('id', pData.contratista_id).single();
+          if (cData) {
+            pData.contratistas = cData;
+          }
+        }
+        profile = pData;
+        setUserProfile(pData);
+        if (pData.rol === 'lider_contratista' && pData.contratistas?.nombre) {
+          empresaFiltro = pData.contratistas.nombre;
+        }
       }
     }
 
@@ -304,7 +312,7 @@ export default function DocumentosHSEPage() {
     );
   }
 
-  const esLiderHSE = userProfile?.rol === 'lider_hse';
+  const esLiderHSE = userProfile?.rol === 'lider_hse' || userProfile?.rol?.toLowerCase() === 'administrador';
 
   return (
     <div className="space-y-8 max-w-[1400px] mx-auto pb-10">
@@ -316,7 +324,7 @@ export default function DocumentosHSEPage() {
         <div className="flex gap-2">
           {userProfile && (
             <Badge variant="outline" className="mr-4 px-3 py-1 bg-slate-100">
-              Perfil: <span className="font-bold ml-1">{esLiderHSE ? 'Líder HSE' : 'Líder Contratista'}</span>
+              Perfil: <span className="font-bold ml-1">{esLiderHSE ? (userProfile?.rol?.toLowerCase() === 'administrador' ? 'Administrador' : 'Líder HSE') : 'Líder Contratista'}</span>
             </Badge>
           )}
           <Button variant="outline" className="bg-white text-slate-600" onClick={() => fetchData()}>

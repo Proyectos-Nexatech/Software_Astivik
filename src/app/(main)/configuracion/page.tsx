@@ -194,12 +194,14 @@ export default function ConfiguracionPage() {
   };
 
   const getRoleBadgeColor = (rol: string) => {
-    switch(rol) {
-      case "ADMINISTRADOR": return "bg-purple-100 text-purple-800 border-purple-200";
-      case "INGENIERO": return "bg-blue-100 text-blue-800 border-blue-200";
-      case "SUPERVISOR": return "bg-orange-100 text-orange-800 border-orange-200";
-      case "GUARDIA": return "bg-slate-100 text-slate-800 border-slate-200";
-      case "CONTRATISTA": return "bg-green-100 text-green-800 border-green-200";
+    switch(rol?.toLowerCase()) {
+      case "administrador": return "bg-purple-100 text-purple-800 border-purple-200";
+      case "ingeniero": return "bg-blue-100 text-blue-800 border-blue-200";
+      case "supervisor": return "bg-orange-100 text-orange-800 border-orange-200";
+      case "guardia": return "bg-slate-100 text-slate-800 border-slate-200";
+      case "contratista": return "bg-green-100 text-green-800 border-green-200";
+      case "lider_hse": return "bg-cyan-100 text-cyan-800 border-cyan-200";
+      case "lider_contratista": return "bg-indigo-100 text-indigo-800 border-indigo-200";
       default: return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
@@ -299,15 +301,15 @@ export default function ConfiguracionPage() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center border-b border-slate-700 pb-2">
                     <span className="text-sm font-medium text-slate-300">Administradores / Líderes</span>
-                    <span className="font-bold">{usuarios.filter(u => ['ADMINISTRADOR', 'lider_hse'].includes(u.rol)).length}</span>
+                    <span className="font-bold">{usuarios.filter(u => ['administrador', 'lider_hse', 'ADMINISTRADOR'].includes(u.rol)).length}</span>
                   </div>
                   <div className="flex justify-between items-center border-b border-slate-700 pb-2">
                     <span className="text-sm font-medium text-slate-300">Ingenieros / Supervisores</span>
-                    <span className="font-bold">{usuarios.filter(u => ['INGENIERO', 'SUPERVISOR'].includes(u.rol)).length}</span>
+                    <span className="font-bold">{usuarios.filter(u => ['ingeniero', 'supervisor', 'INGENIERO', 'SUPERVISOR'].includes(u.rol)).length}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-slate-300">Contratistas (Visores)</span>
-                    <span className="font-bold">{usuarios.filter(u => ['CONTRATISTA', 'lider_contratista'].includes(u.rol)).length}</span>
+                    <span className="font-bold">{usuarios.filter(u => ['contratista', 'lider_contratista', 'CONTRATISTA'].includes(u.rol)).length}</span>
                   </div>
                 </div>
               </CardContent>
@@ -471,11 +473,11 @@ export default function ConfiguracionPage() {
               <Select value={userForm.rol} onValueChange={(v) => setUserForm({...userForm, rol: v || ""})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
-                  <SelectItem value="INGENIERO">Ingeniero</SelectItem>
-                  <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
-                  <SelectItem value="GUARDIA">Guardia</SelectItem>
-                  <SelectItem value="CONTRATISTA">Contratista</SelectItem>
+                  <SelectItem value="administrador">Administrador</SelectItem>
+                  <SelectItem value="ingeniero">Ingeniero</SelectItem>
+                  <SelectItem value="supervisor">Supervisor</SelectItem>
+                  <SelectItem value="guardia">Guardia</SelectItem>
+                  <SelectItem value="contratista">Contratista</SelectItem>
                   <SelectItem value="lider_hse">Líder HSE</SelectItem>
                   <SelectItem value="lider_contratista">Líder Contratista</SelectItem>
                 </SelectContent>
