@@ -240,12 +240,12 @@ export default function ContratistasPage() {
         <div className="flex gap-2">
           {/* Modal CSV */}
           <Dialog open={isCsvModalOpen} onOpenChange={setIsCsvModalOpen}>
-            <DialogTrigger asChild>
+            <DialogTrigger render={
               <Button variant="outline" className="bg-white">
                 <Upload className="w-4 h-4 mr-2" />
                 CARGA MASIVA CSV
               </Button>
-            </DialogTrigger>
+            } />
             <DialogContent className="p-0 overflow-hidden" showCloseButton={false}>
               <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 relative flex items-start justify-between">
                 <div>
@@ -290,12 +290,12 @@ export default function ContratistasPage() {
 
           {/* Modal Individual */}
           <Dialog open={isIndividualModalOpen} onOpenChange={setIsIndividualModalOpen}>
-            <DialogTrigger asChild>
+            <DialogTrigger render={
               <Button onClick={handleOpenNewModal} className="bg-slate-900 hover:bg-slate-800 text-white font-medium">
                 <Plus className="w-4 h-4 mr-2" />
                 NUEVO CONTRATISTA
               </Button>
-            </DialogTrigger>
+            } />
             <DialogContent className="p-0 overflow-hidden" showCloseButton={false}>
               <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 relative flex items-start justify-between">
                 <div>
