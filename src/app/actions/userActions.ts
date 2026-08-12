@@ -25,6 +25,22 @@ export async function getUsuarios() {
     console.error("Error fetching users:", error);
     return [];
   }
+
+  try {
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+    if (!authError && authData?.users) {
+      return data.map(perfil => {
+        const authUser = authData.users.find(u => u.id === perfil.id);
+        return {
+          ...perfil,
+          email: authUser ? authUser.email : null
+        };
+      });
+    }
+  } catch (err) {
+    console.error("Error fetching auth users:", err);
+  }
+
   return data;
 }
 
@@ -70,7 +86,7 @@ export async function crearUsuario(data: any) {
 }
 
 export async function actualizarUsuario(data: any) {
-  const { id, rol, estado, nombre } = data;
+  const { id, rol, estado, nombre, email } = data;
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return { success: false, error: "Falta configurar SUPABASE_SERVICE_ROLE_KEY en el servidor." };
   }
@@ -82,6 +98,14 @@ export async function actualizarUsuario(data: any) {
       .eq('id', id);
 
     if (error) throw error;
+
+    if (email) {
+      const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(id, { email });
+      if (updateAuthError) {
+        console.error("Error updating auth email:", updateAuthError);
+        // We do not throw to avoid failing the whole process if only email update fails
+      }
+    }
     
     revalidatePath("/configuracion");
     return { success: true };

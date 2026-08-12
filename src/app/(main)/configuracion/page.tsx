@@ -123,7 +123,8 @@ export default function ConfiguracionPage() {
           id: editingUser.id,
           nombre: userForm.nombre,
           rol: userForm.rol,
-          estado: userForm.estado
+          estado: userForm.estado,
+          email: userForm.email
         }));
         if (!res.success) {
           alert(res.error);
@@ -458,7 +459,7 @@ export default function ConfiguracionPage() {
           </DialogHeader>
           <form onSubmit={handleSaveUser} className="space-y-4">
             <div><Label>Nombre</Label><Input required value={userForm.nombre || ""} onChange={e => setUserForm({...userForm, nombre: e.target.value})} /></div>
-            <div><Label>Email</Label><Input type="email" required value={userForm.email || ""} onChange={e => setUserForm({...userForm, email: e.target.value})} disabled={!!editingUser} title={editingUser ? "No se puede cambiar el correo de un usuario existente" : ""} /></div>
+            <div><Label>Email</Label><Input type="email" required value={userForm.email || ""} onChange={e => setUserForm({...userForm, email: e.target.value})} /></div>
             {!editingUser && (
               <div><Label>Contraseña</Label><Input type="password" required value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} /></div>
             )}
