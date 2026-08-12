@@ -18,7 +18,7 @@ export function TopNav() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
-        const { data: pData } = await supabase.from('perfiles_usuario').select('*, contratistas(nombre)').eq('id', user.id).single();
+        const { data: pData } = await supabase.from('perfiles_usuario').select('*, contratistas!perfiles_usuario_contratista_id_fkey(nombre)').eq('id', user.id).single();
         if (pData) {
           setProfile(pData);
         }
