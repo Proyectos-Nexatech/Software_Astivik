@@ -26,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Ship, Plus, Search, Building2, Users, AlertCircle, FileCheck, Anchor, Filter, Loader2, CheckCircle2, Upload, Download, X } from "lucide-react";
+import { Ship, Plus, Search, Building2, Users, AlertCircle, FileCheck, Anchor, Filter, Loader2, CheckCircle2, Upload, Download, X, LayoutGrid, List } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 // Mock Data Contratistas (Estadísticas globales para el footer)
@@ -41,6 +41,7 @@ export default function ProyectosPage() {
   const [proyectos, setProyectos] = useState<any[]>([]);
   const [contratistasDirectorio, setContratistasDirectorio] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   
   // Modals
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
@@ -300,54 +301,104 @@ export default function ProyectosPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input placeholder="Buscar por nombre o contratista..." className="pl-9 bg-slate-50 border-none" />
         </div>
-        <Button variant="outline" className="shrink-0"><Filter className="w-4 h-4 mr-2" /> Filtros</Button>
+        <div className="flex gap-2 border-r border-slate-200 pr-4">
+          <Button variant={viewMode === "grid" ? "default" : "outline"} size="icon" onClick={() => setViewMode("grid")} className={viewMode === "grid" ? "bg-slate-900 text-white" : "bg-white"}>
+            <LayoutGrid className="w-4 h-4" />
+          </Button>
+          <Button variant={viewMode === "list" ? "default" : "outline"} size="icon" onClick={() => setViewMode("list")} className={viewMode === "list" ? "bg-slate-900 text-white" : "bg-white"}>
+            <List className="w-4 h-4" />
+          </Button>
+        </div>
+        <Button variant="outline" className="shrink-0 bg-white"><Filter className="w-4 h-4 mr-2" /> Filtros</Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {proyectos.map((proyecto) => (
-          <Card key={proyecto.id} className="overflow-hidden hover:shadow-md transition-shadow border-slate-200 flex flex-col">
-            <div className="h-2 w-full bg-slate-100 flex shrink-0">
-              <div className={`h-full ${getSaludColor(proyecto.salud)} w-full`}></div>
-            </div>
-            <CardHeader className="pb-3 flex-1">
-              <div className="flex justify-between items-start">
-                <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 font-semibold mb-2">
-                  {proyecto.tipo}
-                </Badge>
-                <Badge className={proyecto.estado === 'Activo' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-800'}>
-                  {proyecto.estado}
-                </Badge>
+      {viewMode === "grid" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {proyectos.map((proyecto) => (
+            <Card key={proyecto.id} className="overflow-hidden hover:shadow-md transition-shadow border-slate-200 flex flex-col">
+              <div className="h-2 w-full bg-slate-100 flex shrink-0">
+                <div className={`h-full ${getSaludColor(proyecto.salud)} w-full`}></div>
               </div>
-              <CardTitle className="text-lg font-bold text-slate-900 leading-tight">
-                {proyecto.nombre}
-              </CardTitle>
-              <p className="text-sm text-slate-500 flex items-center gap-1 mt-1">
-                <Building2 className="w-3 h-3" /> {proyecto.empresa_principal}
-              </p>
-            </CardHeader>
-            <CardContent className="shrink-0">
-              <div className="grid grid-cols-2 gap-4 mt-2">
-                <div className="bg-slate-50 rounded p-3 border border-slate-100">
-                   <div className="text-[10px] font-bold text-slate-500 mb-1 flex items-center gap-1"><Users className="w-3 h-3"/> AFORO ACTUAL</div>
-                   <div className="text-xl font-bold text-slate-900">{proyecto.aforo} <span className="text-xs font-normal text-slate-500">trabajadores</span></div>
+              <CardHeader className="pb-3 flex-1">
+                <div className="flex justify-between items-start">
+                  <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 font-semibold mb-2">
+                    {proyecto.tipo}
+                  </Badge>
+                  <Badge className={proyecto.estado === 'Activo' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-800'}>
+                    {proyecto.estado}
+                  </Badge>
                 </div>
-                <div className="bg-slate-50 rounded p-3 border border-slate-100">
-                   <div className="text-[10px] font-bold text-slate-500 mb-1 flex items-center gap-1"><FileCheck className="w-3 h-3"/> SALUD HSE</div>
-                   <div className="text-sm font-semibold text-slate-900 flex items-center gap-1.5 mt-1">
-                     <div className={`w-2 h-2 rounded-full ${getSaludColor(proyecto.salud)}`}></div>
-                     {proyecto.salud}
-                   </div>
+                <CardTitle className="text-lg font-bold text-slate-900 leading-tight">
+                  {proyecto.nombre}
+                </CardTitle>
+                <p className="text-sm text-slate-500 flex items-center gap-1 mt-1">
+                  <Building2 className="w-3 h-3" /> {proyecto.empresa_principal}
+                </p>
+              </CardHeader>
+              <CardContent className="shrink-0">
+                <div className="grid grid-cols-2 gap-4 mt-2">
+                  <div className="bg-slate-50 rounded p-3 border border-slate-100">
+                     <div className="text-[10px] font-bold text-slate-500 mb-1 flex items-center gap-1"><Users className="w-3 h-3"/> AFORO ACTUAL</div>
+                     <div className="text-xl font-bold text-slate-900">{proyecto.aforo} <span className="text-xs font-normal text-slate-500">trabajadores</span></div>
+                  </div>
+                  <div className="bg-slate-50 rounded p-3 border border-slate-100">
+                     <div className="text-[10px] font-bold text-slate-500 mb-1 flex items-center gap-1"><FileCheck className="w-3 h-3"/> SALUD HSE</div>
+                     <div className="text-sm font-semibold text-slate-900 flex items-center gap-1.5 mt-1">
+                       <div className={`w-2 h-2 rounded-full ${getSaludColor(proyecto.salud)}`}></div>
+                       {proyecto.salud}
+                     </div>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-            <CardFooter className="bg-slate-50 border-t border-slate-100 px-6 py-3 shrink-0 mt-auto">
-              <Button variant="link" onClick={() => openDetailsModal(proyecto)} className="px-0 text-slate-600 hover:text-slate-900 font-semibold text-sm w-full justify-between">
-                Ver Contratistas y Detalles <Anchor className="w-4 h-4" />
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+              <CardFooter className="bg-slate-50 border-t border-slate-100 px-6 py-3 shrink-0 mt-auto">
+                <Button variant="link" onClick={() => openDetailsModal(proyecto)} className="px-0 text-slate-600 hover:text-slate-900 font-semibold text-sm w-full justify-between">
+                  Ver Contratistas y Detalles <Anchor className="w-4 h-4" />
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card className="border-slate-200 shadow-sm overflow-hidden">
+          <Table>
+            <TableHeader className="bg-slate-50/50">
+              <TableRow>
+                <TableHead className="font-bold text-slate-700 px-6">Proyecto / Barco</TableHead>
+                <TableHead className="font-bold text-slate-700">Empresa Principal</TableHead>
+                <TableHead className="font-bold text-slate-700 text-center">Tipo</TableHead>
+                <TableHead className="font-bold text-slate-700 text-center">Aforo</TableHead>
+                <TableHead className="font-bold text-slate-700 text-center">Salud HSE</TableHead>
+                <TableHead className="font-bold text-slate-700 text-right px-6">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {proyectos.map((proyecto) => (
+                <TableRow key={proyecto.id} className="hover:bg-slate-50/50">
+                  <TableCell className="font-semibold text-slate-900 px-6 py-4">{proyecto.nombre}</TableCell>
+                  <TableCell className="text-slate-500"><div className="flex items-center gap-2"><Building2 className="w-4 h-4 text-slate-400" /> {proyecto.empresa_principal}</div></TableCell>
+                  <TableCell className="text-center"><Badge variant="outline" className="bg-slate-50 text-slate-600">{proyecto.tipo}</Badge></TableCell>
+                  <TableCell className="text-center font-medium text-slate-700">{proyecto.aforo}</TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="outline" className={`${proyecto.salud === 'Optimo' ? 'bg-green-50 text-green-700 border-green-200' : proyecto.salud === 'Riesgo Medio' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                      {proyecto.salud}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right px-6">
+                    <Button variant="ghost" size="sm" onClick={() => openDetailsModal(proyecto)} className="text-blue-600 font-semibold hover:bg-blue-50">
+                      Gestionar <Anchor className="w-4 h-4 ml-2" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {proyectos.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-slate-500 py-6">No hay proyectos encontrados.</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
 
       {/* Details & Activities Modal */}
       <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
