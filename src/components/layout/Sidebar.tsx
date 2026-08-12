@@ -18,12 +18,12 @@ export function Sidebar() {
 
   return (
     <aside className="w-16 md:w-64 bg-[#0a1e36] text-slate-100 border-r border-[#0a1e36] flex flex-col h-full shrink-0 transition-all duration-300">
-      <div className="h-28 p-4 flex items-center justify-center border-b border-white/10 shrink-0">
+      <div className="h-24 p-4 flex items-center justify-center border-b border-white/10 shrink-0">
         <Link href="/" className="block w-full">
           {/* Logo Astivik (Desktop) y Abreviatura (Mobile) */}
-          <div className="bg-white rounded p-3 flex justify-center items-center w-full">
+          <div className="flex justify-center items-center w-full">
             <img src="/Logo%20ASTIVIK%20(1).png" alt="Astivik Shipyard" className="hidden md:block w-full max-h-16 object-contain" />
-            <div className="md:hidden w-8 h-8 bg-[#0a1e36] text-white rounded flex items-center justify-center text-xs font-bold shadow-sm mx-auto">
+            <div className="md:hidden w-8 h-8 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-bold shadow-sm mx-auto">
               <span className="text-sm font-black">A</span>
             </div>
           </div>
