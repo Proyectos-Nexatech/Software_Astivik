@@ -2,14 +2,15 @@
 
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_key");
+const apiKey = process.env.RESEND_API_KEY || process.env.resend_api_key;
+const resend = new Resend(apiKey || "re_dummy_key");
 
 export async function notificarHseDocumentoSubido(
   contratistaNombre: string, 
   trabajadorNombre: string, 
   tipoDocumento: string
 ) {
-  if (!process.env.RESEND_API_KEY) {
+  if (!apiKey) {
     console.log(`[SIMULACIÓN EMAIL] 📧 Correo a HSE: El contratista ${contratistaNombre} ha subido el documento [${tipoDocumento.toUpperCase()}] para ${trabajadorNombre}. Pendiente de revisión.`);
     return { success: true, simulated: true };
   }
@@ -41,7 +42,7 @@ export async function notificarContratistaDocumentoAprobado(
   trabajadorNombre: string,
   tipoDocumento: string
 ) {
-  if (!process.env.RESEND_API_KEY) {
+  if (!apiKey) {
     console.log(`[SIMULACIÓN EMAIL] 📧 Correo a ${emailContratista}: Su documento [${tipoDocumento.toUpperCase()}] para ${trabajadorNombre} ha sido APROBADO por Astivik.`);
     return { success: true, simulated: true };
   }
