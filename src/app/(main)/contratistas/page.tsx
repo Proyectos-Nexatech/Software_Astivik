@@ -12,6 +12,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Building2, Search, Plus, Upload, Download, CheckCircle2, AlertCircle, Edit2, Trash2, Loader2, X } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
+// Required docs per cargo (simulating the configuration matrix)
+const requiredDocsByCargo: Record<string, string[]> = {
+  "Soldador 1A": ["ss", "examen", "alturas", "confinados", "soldadura"],
+  "Sandblaster": ["ss", "examen", "alturas", "confinados"],
+  "Electricista": ["ss", "examen", "alturas"]
+};
+
 export default function ContratistasPage() {
   const supabase = createClient();
   const [contratistas, setContratistas] = useState<any[]>([]);
@@ -24,11 +31,103 @@ export default function ContratistasPage() {
   const [form, setForm] = useState({ nit: "", empresa: "", especialidad: "", contacto: "" });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const calculateEstado = (dateStr: string) => {
+    if (!dateStr) return "Faltante";
+    const todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
+    const expiryDate = new Date(dateStr + 'T00:00:00');
+    const diffDays = Math.ceil((expiryDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return "Vencido";
+    if (diffDays <= 30) return "Por Vencer";
+    return "Vigente";
+  };
+
+  const getGlobalStatus = (docs: any) => {
+    let hasVencido = false;
+    let hasWarning = false;
+    let hasFaltante = false;
+    let hasNoAprobado = false;
+    
+    Object.values(docs).forEach((doc: any) => {
+      if (doc) {
+        if (doc.estado === "Vencido") hasVencido = true;
+        if (doc.estado === "Faltante") hasFaltante = true;
+        if (doc.estado === "Por Vencer") hasWarning = true;
+        if (doc.estado_aprobacion !== "Aprobado" && doc.estado !== "Faltante") hasNoAprobado = true;
+      }
+    });
+
+    if (hasVencido || hasFaltante || hasNoAprobado) return "INHABILITADO";
+    if (hasWarning) return "ALERTA PREVENTIVA";
+    return "HABILITADO";
+  };
+
   const fetchContratistas = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('contratistas').select('*').order('created_at', { ascending: false });
-    if (!error && data) {
-      setContratistas(data);
+    
+    // Fetch tables
+    const { data: contratistasData, error } = await supabase.from('contratistas').select('*').order('created_at', { ascending: false });
+    const { data: configData } = await supabase.from('configuracion_vigencias').select('*');
+    const { data: workersData } = await supabase.from('trabajadores').select('*');
+    const { data: docsData } = await supabase.from('documentos_hse').select('*');
+
+    const vConfig: Record<string, number> = {
+      ss: 1, examen: 12, alturas: 12, confinados: 12, soldadura: 6 // Defaults
+    };
+    if (configData) {
+      configData.forEach((row: any) => {
+        vConfig[row.tipo_documento] = row.periodo_meses;
+      });
+    }
+
+    if (!error && contratistasData) {
+      // Aggregate data per contractor
+      const mergedContratistas = contratistasData.map(c => {
+        // Find workers for this contractor
+        const cWorkers = (workersData || []).filter(w => 
+          w.empresa?.toLowerCase() === c.nombre?.toLowerCase() || 
+          w.empresa?.toLowerCase().includes(c.nombre?.toLowerCase())
+        );
+        
+        let habilitados = 0;
+        let alertas = 0;
+
+        cWorkers.forEach(worker => {
+          const docsMap: any = {};
+          const requiredKeys = requiredDocsByCargo[worker.cargo] || ["ss", "examen"];
+          
+          requiredKeys.forEach(key => {
+            docsMap[key] = { estado: "Faltante", estado_aprobacion: "Pendiente" };
+          });
+
+          // Override with existing docs
+          docsData?.filter(d => d.trabajador_id === worker.id).forEach(d => {
+            if (d.tipo_documento && requiredKeys.includes(d.tipo_documento)) {
+              docsMap[d.tipo_documento] = {
+                estado: calculateEstado(d.fecha_vencimiento),
+                estado_aprobacion: d.estado_aprobacion || "Pendiente"
+              };
+            }
+          });
+
+          const globalStatus = getGlobalStatus(docsMap);
+          if (globalStatus === "HABILITADO") habilitados++;
+          if (globalStatus !== "HABILITADO") alertas++;
+        });
+
+        const totalWorkers = cWorkers.length;
+        const aptoPorcentaje = totalWorkers > 0 ? Math.round((habilitados / totalWorkers) * 100) : 0;
+
+        return {
+          ...c,
+          totalWorkers,
+          alertas,
+          aptoPorcentaje
+        };
+      });
+
+      setContratistas(mergedContratistas);
     }
     setLoading(false);
   };
@@ -40,7 +139,6 @@ export default function ContratistasPage() {
   const handleSaveIndividual = async () => {
     if (form.empresa && form.nit) {
       if (editingId) {
-        // UPDATE
         const { data, error } = await supabase
           .from('contratistas')
           .update({
@@ -53,10 +151,9 @@ export default function ContratistasPage() {
           .select();
           
         if (!error && data) {
-          setContratistas(contratistas.map(c => c.id === editingId ? data[0] : c));
+          fetchContratistas();
         }
       } else {
-        // INSERT
         const { data, error } = await supabase
           .from('contratistas')
           .insert([{
@@ -69,7 +166,7 @@ export default function ContratistasPage() {
           .select();
           
         if (!error && data) {
-          setContratistas([data[0], ...contratistas]);
+          fetchContratistas();
         }
       }
       setForm({ nit: "", empresa: "", especialidad: "", contacto: "" });
@@ -121,7 +218,7 @@ export default function ContratistasPage() {
           
           const { data, error } = await supabase.from('contratistas').insert(nuevos).select();
           if (!error && data) {
-            setContratistas([...data, ...contratistas]);
+            fetchContratistas();
           } else {
             alert("Error al cargar el CSV: Es posible que algunos NIT o nombres ya existan.");
           }
@@ -143,12 +240,12 @@ export default function ContratistasPage() {
         <div className="flex gap-2">
           {/* Modal CSV */}
           <Dialog open={isCsvModalOpen} onOpenChange={setIsCsvModalOpen}>
-            <DialogTrigger render={
+            <DialogTrigger asChild>
               <Button variant="outline" className="bg-white">
                 <Upload className="w-4 h-4 mr-2" />
                 CARGA MASIVA CSV
               </Button>
-            } />
+            </DialogTrigger>
             <DialogContent className="p-0 overflow-hidden" showCloseButton={false}>
               <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 relative flex items-start justify-between">
                 <div>
@@ -193,12 +290,12 @@ export default function ContratistasPage() {
 
           {/* Modal Individual */}
           <Dialog open={isIndividualModalOpen} onOpenChange={setIsIndividualModalOpen}>
-            <DialogTrigger render={
+            <DialogTrigger asChild>
               <Button onClick={handleOpenNewModal} className="bg-slate-900 hover:bg-slate-800 text-white font-medium">
                 <Plus className="w-4 h-4 mr-2" />
                 NUEVO CONTRATISTA
               </Button>
-            } />
+            </DialogTrigger>
             <DialogContent className="p-0 overflow-hidden" showCloseButton={false}>
               <div className="px-6 py-4 bg-slate-900 text-white border-b border-slate-800 relative flex items-start justify-between">
                 <div>
@@ -244,16 +341,16 @@ export default function ContratistasPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="col-span-1 md:col-span-3 border-slate-200 shadow-sm">
+      <div className="grid grid-cols-1 gap-6">
+        <Card className="border-slate-200 shadow-sm">
           <CardHeader className="pb-4 border-b border-slate-100 flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-bold">Directorio de Empresas</CardTitle>
+            <CardTitle className="text-lg font-bold">Directorio y Estado HSE</CardTitle>
             <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input placeholder="Buscar por NIT o Empresa..." className="pl-9 h-9" />
             </div>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="p-0 overflow-x-auto">
             {loading ? (
               <div className="p-12 flex justify-center items-center">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -265,8 +362,9 @@ export default function ContratistasPage() {
                     <TableHead className="font-semibold px-6">NIT</TableHead>
                     <TableHead className="font-semibold">Razón Social</TableHead>
                     <TableHead className="font-semibold">Especialidad</TableHead>
-                    <TableHead className="font-semibold">Contacto</TableHead>
-                    <TableHead className="font-semibold text-center">Estado</TableHead>
+                    <TableHead className="font-semibold text-center">Personal Asignado</TableHead>
+                    <TableHead className="font-semibold text-center">Docs Pendientes</TableHead>
+                    <TableHead className="font-semibold text-center">% Apto</TableHead>
                     <TableHead className="font-semibold text-right px-6">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -274,18 +372,31 @@ export default function ContratistasPage() {
                   {contratistas.map((contratista) => (
                     <TableRow key={contratista.id}>
                       <TableCell className="font-medium text-slate-600 px-6 py-4">{contratista.nit || "N/A"}</TableCell>
-                      <TableCell className="font-bold text-slate-900 flex items-center gap-2">
+                      <TableCell className="font-bold text-slate-900 flex items-center gap-2 mt-2">
                         <Building2 className="w-4 h-4 text-slate-400" />
                         {contratista.nombre}
                       </TableCell>
-                      <TableCell>{contratista.especialidad}</TableCell>
-                      <TableCell className="text-slate-500 text-sm">{contratista.contacto || "N/A"}</TableCell>
+                      <TableCell className="text-slate-500 text-sm">{contratista.especialidad}</TableCell>
+                      <TableCell className="text-center font-medium text-slate-700">{contratista.totalWorkers || 0}</TableCell>
                       <TableCell className="text-center">
-                        {contratista.estado === "Activo" || !contratista.estado ? (
-                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100"><CheckCircle2 className="w-3 h-3 mr-1" /> Activo</Badge>
+                        {contratista.alertas > 0 ? (
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                            <AlertCircle className="w-3 h-3 mr-1" /> {contratista.alertas} Alertas
+                          </Badge>
                         ) : (
-                          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100"><AlertCircle className="w-3 h-3 mr-1" /> Alerta</Badge>
+                          <span className="text-sm text-slate-500 flex items-center justify-center"><CheckCircle2 className="w-4 h-4 text-green-500 mr-1"/> Todo al día</span>
                         )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-3">
+                          <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full ${(contratista.aptoPorcentaje || 0) >= 95 ? 'bg-green-500' : (contratista.aptoPorcentaje || 0) >= 80 ? 'bg-yellow-500' : 'bg-red-500'}`} 
+                              style={{ width: `${contratista.aptoPorcentaje || 0}%` }}
+                            ></div>
+                          </div>
+                          <span className="font-bold text-slate-900 w-8">{contratista.aptoPorcentaje || 0}%</span>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right px-6">
                         <div className="flex items-center justify-end gap-2">

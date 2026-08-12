@@ -559,54 +559,7 @@ export default function ProyectosPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="mt-12">
-        <div className="flex items-center gap-2 mb-6">
-          <Building2 className="w-5 h-5 text-slate-700" />
-          <h2 className="text-xl font-bold text-slate-900">Estado de Contratistas (Directorio)</h2>
-        </div>
-        <Card className="border-slate-200 shadow-sm overflow-hidden">
-          <Table>
-            <TableHeader className="bg-slate-50">
-              <TableRow>
-                <TableHead className="font-bold text-slate-700">Empresa Contratista</TableHead>
-                <TableHead className="font-bold text-slate-700">Especialidad</TableHead>
-                <TableHead className="font-bold text-slate-700 text-center">Personal Asignado</TableHead>
-                <TableHead className="font-bold text-slate-700">Docs Pendientes/Vencidos</TableHead>
-                <TableHead className="font-bold text-slate-700 text-right">Habilitación (% Apto)</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockContratistasStats.map((contratista) => (
-                <TableRow key={contratista.id}>
-                  <TableCell className="font-semibold text-slate-900">{contratista.empresa}</TableCell>
-                  <TableCell className="text-slate-500">{contratista.especialidad}</TableCell>
-                  <TableCell className="text-center font-medium text-slate-700">{contratista.asignados}</TableCell>
-                  <TableCell>
-                    {contratista.docPendientes > 0 ? (
-                      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                        <AlertCircle className="w-3 h-3 mr-1" /> {contratista.docPendientes} Alertas
-                      </Badge>
-                    ) : (
-                      <span className="text-sm text-slate-500 flex items-center"><CheckCircle2 className="w-4 h-4 text-green-500 mr-1"/> Todo al día</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-3">
-                      <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full ${contratista.habilitacion >= 95 ? 'bg-green-500' : contratista.habilitacion >= 80 ? 'bg-yellow-500' : 'bg-red-500'}`} 
-                          style={{ width: `${contratista.habilitacion}%` }}
-                        ></div>
-                      </div>
-                      <span className="font-bold text-slate-900 w-8">{contratista.habilitacion}%</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
-      </div>
+
     </div>
   );
 }
