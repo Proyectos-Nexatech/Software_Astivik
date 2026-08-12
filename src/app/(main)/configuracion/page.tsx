@@ -298,13 +298,16 @@ export default function ConfiguracionPage() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center border-b border-slate-700 pb-2">
-                    <span className="text-sm font-medium text-slate-300">Administradores</span><span className="font-bold">1</span>
+                    <span className="text-sm font-medium text-slate-300">Administradores / Líderes</span>
+                    <span className="font-bold">{usuarios.filter(u => ['ADMINISTRADOR', 'lider_hse'].includes(u.rol)).length}</span>
                   </div>
                   <div className="flex justify-between items-center border-b border-slate-700 pb-2">
-                    <span className="text-sm font-medium text-slate-300">Ingenieros Encargados</span><span className="font-bold">1</span>
+                    <span className="text-sm font-medium text-slate-300">Ingenieros / Supervisores</span>
+                    <span className="font-bold">{usuarios.filter(u => ['INGENIERO', 'SUPERVISOR'].includes(u.rol)).length}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-slate-300">Contratistas (Visores)</span><span className="font-bold">1</span>
+                    <span className="text-sm font-medium text-slate-300">Contratistas (Visores)</span>
+                    <span className="font-bold">{usuarios.filter(u => ['CONTRATISTA', 'lider_contratista'].includes(u.rol)).length}</span>
                   </div>
                 </div>
               </CardContent>
