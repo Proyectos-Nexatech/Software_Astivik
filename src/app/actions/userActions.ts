@@ -52,6 +52,7 @@ export async function crearUsuario(data: any) {
   }
 
   try {
+    let authUserId;
     // 1. Crear en Auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -59,20 +60,42 @@ export async function crearUsuario(data: any) {
       email_confirm: true // Auto-confirm for admin created users
     });
 
-    if (authError) throw authError;
+    if (authError) {
+      if (authError.message.includes("already been registered") || authError.message.includes("already exists")) {
+        const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
+        const existingUser = listData?.users?.find(u => u.email === email);
+        if (existingUser) {
+          authUserId = existingUser.id;
+          if (password) {
+            await supabaseAdmin.auth.admin.updateUserById(authUserId, { password });
+          }
+        } else {
+          throw authError;
+        }
+      } else {
+        throw authError;
+      }
+    } else if (authData?.user) {
+      authUserId = authData.user.id;
+    }
 
     // 2. Crear perfil en perfiles_usuario
-    if (authData.user) {
+    if (authUserId) {
       const { error: profileError } = await supabaseAdmin.from('perfiles_usuario').insert({
-        id: authData.user.id,
+        id: authUserId,
         nombre_completo: nombre,
         rol,
         estado: 'Activo'
       });
 
       if (profileError) {
-        // Fallback: delete auth user if profile fails
-        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        if (profileError.code === '23505') {
+          return { success: false, error: "El perfil para este usuario ya existe en el sistema." };
+        }
+        // Fallback: delete auth user only if we just created it
+        if (!authError && authData?.user) {
+          await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        }
         throw profileError;
       }
     }
