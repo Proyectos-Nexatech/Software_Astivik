@@ -254,7 +254,7 @@ export default function DocumentosHSEPage() {
     if (!error) {
       if (aprobado) {
         // Enviar correo al contratista
-        await notificarContratistaDocumentoAprobado(selectedTrabajador.contratista, selectedTrabajador.nombre, docKey);
+        await notificarContratistaDocumentoAprobado("proyectos@nexatech.com.co", selectedTrabajador.nombre, docKey);
       }
       fetchData();
     }
