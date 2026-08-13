@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Papa from "papaparse";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -462,7 +462,7 @@ export default function ControlAccesoPage() {
                                 {dateKey}
                               </TableCell>
                             </TableRow>
-                            {registrosAgrupados[dateKey].map(r => (
+                            {registrosAgrupados[dateKey].map((r: any) => (
                               <TableRow key={r.id} className="hover:bg-slate-50/80 transition-colors group">
                                 <TableCell className="align-middle py-3">
                                   <span className="font-bold text-slate-700">
