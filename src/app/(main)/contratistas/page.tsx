@@ -92,6 +92,7 @@ export default function ContratistasPage() {
         
         let habilitados = 0;
         let alertas = 0;
+        let docsPendientes = 0;
 
         cWorkers.forEach(worker => {
           const docsMap: any = {};
@@ -114,6 +115,12 @@ export default function ContratistasPage() {
           const globalStatus = getGlobalStatus(docsMap);
           if (globalStatus === "HABILITADO") habilitados++;
           if (globalStatus !== "HABILITADO") alertas++;
+          
+          Object.values(docsMap).forEach((doc: any) => {
+            if (doc.estado === "Faltante" || doc.estado === "Vencido" || doc.estado === "Por Vencer" || doc.estado_aprobacion !== "Aprobado") {
+              docsPendientes++;
+            }
+          });
         });
 
         const totalWorkers = cWorkers.length;
@@ -123,6 +130,7 @@ export default function ContratistasPage() {
           ...c,
           totalWorkers,
           alertas,
+          docsPendientes,
           aptoPorcentaje
         };
       });
@@ -379,9 +387,9 @@ export default function ContratistasPage() {
                       <TableCell className="text-slate-500 text-sm">{contratista.especialidad}</TableCell>
                       <TableCell className="text-center font-medium text-slate-700">{contratista.totalWorkers || 0}</TableCell>
                       <TableCell className="text-center">
-                        {contratista.alertas > 0 ? (
+                        {contratista.docsPendientes > 0 ? (
                           <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                            <AlertCircle className="w-3 h-3 mr-1" /> {contratista.alertas} Alertas
+                            <AlertCircle className="w-3 h-3 mr-1" /> {contratista.docsPendientes} Docs
                           </Badge>
                         ) : (
                           <span className="text-sm text-slate-500 flex items-center justify-center"><CheckCircle2 className="w-4 h-4 text-green-500 mr-1"/> Todo al día</span>
