@@ -113,11 +113,11 @@ export default function ContratistasPage() {
           });
 
           const globalStatus = getGlobalStatus(docsMap);
-          if (globalStatus === "HABILITADO") habilitados++;
-          if (globalStatus !== "HABILITADO") alertas++;
+          if (globalStatus === "HABILITADO" || globalStatus === "ALERTA PREVENTIVA") habilitados++;
+          if (globalStatus === "INHABILITADO") alertas++;
           
           Object.values(docsMap).forEach((doc: any) => {
-            if (doc.estado === "Faltante" || doc.estado === "Vencido" || doc.estado === "Por Vencer" || doc.estado_aprobacion !== "Aprobado") {
+            if (doc.estado === "Faltante" || doc.estado === "Vencido" || (doc.estado !== "Faltante" && doc.estado_aprobacion !== "Aprobado")) {
               docsPendientes++;
             }
           });
