@@ -30,6 +30,9 @@ export default function ControlAccesoPage() {
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState<string>("");
   const [registrosRecientes, setRegistrosRecientes] = useState<any[]>([]);
   const [vigenciasConfig, setVigenciasConfig] = useState<Record<string, number>>({});
+  const [transitosSearch, setTransitosSearch] = useState("");
+  const [transitosFiltroTipo, setTransitosFiltroTipo] = useState("TODOS");
+  const [visibleLimit, setVisibleLimit] = useState(10);
 
   // Report State
   const [reportData, setReportData] = useState<any[]>([]);
@@ -72,7 +75,7 @@ export default function ControlAccesoPage() {
       .from('registros_acceso')
       .select('*, trabajadores(nombre, empresa, documento), proyectos(nombre)')
       .order('fecha_hora', { ascending: false })
-      .limit(10);
+      .limit(100);
     if (data) setRegistrosRecientes(data);
   };
 
@@ -272,6 +275,28 @@ export default function ControlAccesoPage() {
     document.body.removeChild(link);
   };
 
+  const registrosFiltrados = registrosRecientes.filter(r => {
+    if (transitosFiltroTipo !== "TODOS" && r.tipo !== transitosFiltroTipo) return false;
+    if (transitosSearch) {
+      const search = transitosSearch.toLowerCase();
+      const nombre = (r.trabajadores?.nombre || "").toLowerCase();
+      const empresa = (r.trabajadores?.empresa || "").toLowerCase();
+      if (!nombre.includes(search) && !empresa.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const registrosPaginados = registrosFiltrados.slice(0, visibleLimit);
+
+  const registrosAgrupados = registrosPaginados.reduce((acc, curr) => {
+    const fecha = new Date(curr.fecha_hora);
+    const dateKey = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const dateKeyCap = dateKey.charAt(0).toUpperCase() + dateKey.slice(1);
+    if (!acc[dateKeyCap]) acc[dateKeyCap] = [];
+    acc[dateKeyCap].push(curr);
+    return acc;
+  }, {} as Record<string, any[]>);
+
   return (
     <div className="space-y-8 max-w-[1200px] mx-auto pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -391,44 +416,85 @@ export default function ControlAccesoPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200 shadow-sm overflow-hidden">
-              <CardHeader className="bg-[#0a1e36] text-white border-b border-slate-100 pb-4">
+            <Card className="border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
+              <CardHeader className="bg-[#0a1e36] text-white pb-6 rounded-b-xl">
                 <CardTitle className="text-lg">Tránsitos Recientes</CardTitle>
-                <CardDescription className="text-slate-300">Últimos registros de entrada y salida.</CardDescription>
               </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Hora</TableHead>
-                      <TableHead>Personal</TableHead>
-                      <TableHead className="text-center">Tipo</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {registrosRecientes.map(r => (
-                      <TableRow key={r.id}>
-                        <TableCell className="text-xs font-medium text-slate-500">
-                          {new Date(r.fecha_hora).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit' })}
-                        </TableCell>
-                        <TableCell>
-                          <p className="font-bold text-slate-800 text-sm">{r.trabajadores?.nombre}</p>
-                          <p className="text-[10px] text-slate-500">{r.trabajadores?.empresa}</p>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge className={r.tipo === 'ENTRADA' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}>
-                            {r.tipo}
-                          </Badge>
-                        </TableCell>
+              <CardContent className="p-4 flex flex-col flex-1">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input 
+                      placeholder="Buscar por Nombre o Empresa" 
+                      className="pl-9 h-9" 
+                      value={transitosSearch}
+                      onChange={e => setTransitosSearch(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-1 bg-slate-100 p-1 rounded-md text-sm font-medium">
+                    <button onClick={() => setTransitosFiltroTipo('TODOS')} className={`px-3 py-1 rounded-md transition-colors ${transitosFiltroTipo === 'TODOS' ? 'bg-[#0a1e36] text-white' : 'text-slate-600 hover:bg-slate-200'}`}>Todos</button>
+                    <button onClick={() => setTransitosFiltroTipo('ENTRADA')} className={`px-3 py-1 rounded-md transition-colors ${transitosFiltroTipo === 'ENTRADA' ? 'bg-green-100 text-green-800' : 'text-slate-600 hover:bg-slate-200'}`}>Ver Entradas</button>
+                    <button onClick={() => setTransitosFiltroTipo('SALIDA')} className={`px-3 py-1 rounded-md transition-colors ${transitosFiltroTipo === 'SALIDA' ? 'bg-red-100 text-red-800' : 'text-slate-600 hover:bg-slate-200'}`}>Ver Salidas</button>
+                  </div>
+                </div>
+
+                <div className="overflow-auto border border-slate-100 rounded-lg flex-1">
+                  <Table>
+                    <TableHeader className="bg-white sticky top-0 z-10 shadow-sm">
+                      <TableRow className="border-b-2">
+                        <TableHead className="w-[80px] font-bold text-slate-800 text-xs uppercase">Hora</TableHead>
+                        <TableHead className="font-bold text-slate-800 text-xs uppercase">Personal</TableHead>
+                        <TableHead className="w-[120px] text-center font-bold text-slate-800 text-xs uppercase">Registro</TableHead>
                       </TableRow>
-                    ))}
-                    {registrosRecientes.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center text-slate-500 py-6 text-sm">Sin registros recientes hoy.</TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.keys(registrosAgrupados).length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-slate-500 py-10">
+                            No hay registros que coincidan con la búsqueda.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        Object.keys(registrosAgrupados).map(dateKey => (
+                          <React.Fragment key={dateKey}>
+                            <TableRow className="bg-slate-50 hover:bg-slate-50">
+                              <TableCell colSpan={3} className="font-bold text-slate-700 py-2 border-b">
+                                {dateKey}
+                              </TableCell>
+                            </TableRow>
+                            {registrosAgrupados[dateKey].map(r => (
+                              <TableRow key={r.id} className="hover:bg-slate-50/80 transition-colors group">
+                                <TableCell className="align-middle py-3">
+                                  <span className="font-bold text-slate-700">
+                                    {new Date(r.fecha_hora).toLocaleTimeString('es-ES', { hour: '2-digit', minute:'2-digit' })}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="py-3">
+                                  <div className="font-black text-slate-900 group-hover:text-blue-700 transition-colors">{r.trabajadores?.nombre}</div>
+                                  <div className="text-[11px] text-slate-500 font-medium">{r.trabajadores?.empresa}</div>
+                                </TableCell>
+                                <TableCell className="text-center align-middle py-3">
+                                  <div className="flex justify-center">
+                                    <Badge className={`w-20 justify-center h-6 rounded-full flex items-center ${r.tipo === 'ENTRADA' ? 'bg-green-100 text-green-700 hover:bg-green-100' : 'bg-red-100 text-red-700 hover:bg-red-100'}`}>
+                                      {r.tipo}
+                                    </Badge>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </React.Fragment>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                {registrosFiltrados.length > visibleLimit && (
+                  <div className="pt-4 flex justify-center">
+                    <Button variant="ghost" onClick={() => setVisibleLimit(prev => prev + 10)} className="text-slate-500 text-sm">
+                      Show more
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
