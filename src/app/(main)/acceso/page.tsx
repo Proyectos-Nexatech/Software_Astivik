@@ -416,8 +416,8 @@ export default function ControlAccesoPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
-              <CardHeader className="bg-[#0a1e36] text-white pb-6 rounded-b-xl">
+            <Card className="border-slate-200 shadow-sm overflow-hidden flex flex-col h-full p-0 gap-0">
+              <CardHeader className="bg-[#0a1e36] text-white pt-5 pb-6 rounded-t-xl rounded-b-xl">
                 <CardTitle className="text-lg">Tránsitos Recientes</CardTitle>
               </CardHeader>
               <CardContent className="p-4 flex flex-col flex-1">
