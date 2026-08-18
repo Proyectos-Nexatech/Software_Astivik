@@ -228,7 +228,7 @@ export default function PersonalOperativoPage() {
 
   const csvTemplate = "data:text/csv;charset=utf-8,%EF%BB%BFDocumento;Nombre;Cargo;Contratista%0A1045223112;Carlos Mendoza;Soldador 1A;Metalprest S.A.S";
   
-  const puedeEditar = userProfile?.rol === 'lider_hse' || userProfile?.rol === 'admin' || userProfile?.rol === 'lider_contratista' || userProfile?.rol === 'ADMINISTRADOR';
+  const puedeEditar = ['lider_hse', 'admin', 'lider_contratista', 'administrador', 'ADMINISTRADOR'].includes(userProfile?.rol);
 
   return (
     <div className="space-y-8 max-w-[1200px] mx-auto pb-10">
