@@ -7,13 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { UserCircle, Calendar, Plus, Clock, Search, Trash2 } from "lucide-react";
+import { UserCircle, Calendar, Plus, Clock, Search, Trash2, Pencil } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 export default function VisitantesPage() {
   const supabase = createClient();
   const [visitantes, setVisitantes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Form State
   const [documento, setDocumento] = useState("");
@@ -60,7 +61,7 @@ export default function VisitantesPage() {
 
     const { data: userData } = await supabase.auth.getUser();
 
-    const { error } = await supabase.from('visitantes').insert([{
+    const payload = {
       documento,
       nombre,
       empresa_origen: empresa || null,
@@ -68,7 +69,16 @@ export default function VisitantesPage() {
       fecha_inicio: new Date(fechaInicio).toISOString(),
       fecha_fin: new Date(fechaFin).toISOString(),
       creado_por: userData?.user?.id
-    }]);
+    };
+
+    let error;
+    if (editingId) {
+      const { error: updateError } = await supabase.from('visitantes').update(payload).eq('id', editingId);
+      error = updateError;
+    } else {
+      const { error: insertError } = await supabase.from('visitantes').insert([payload]);
+      error = insertError;
+    }
 
     if (!error) {
       // Clear form
@@ -76,10 +86,33 @@ export default function VisitantesPage() {
       setNombre("");
       setEmpresa("");
       setMotivo("");
+      setEditingId(null);
       fetchVisitantes();
     } else {
-      alert("Error al registrar visitante.");
+      alert("Error al guardar visitante.");
       console.error(error);
+    }
+  };
+
+  const handleEdit = (v: any) => {
+    setEditingId(v.id);
+    setDocumento(v.documento);
+    setNombre(v.nombre);
+    setEmpresa(v.empresa_origen || "");
+    setMotivo(v.motivo_visita || "");
+    
+    // Format to datetime-local (YYYY-MM-DDThh:mm)
+    const localInicio = new Date(new Date(v.fecha_inicio).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+    const localFin = new Date(new Date(v.fecha_fin).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+    
+    setFechaInicio(localInicio);
+    setFechaFin(localFin);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm("¿Está seguro que desea eliminar este pase de visitante?")) {
+      await supabase.from('visitantes').delete().eq('id', id);
+      fetchVisitantes();
     }
   };
 
@@ -114,9 +147,9 @@ export default function VisitantesPage() {
         <Card className="lg:col-span-1 shadow-sm border-slate-200">
           <CardHeader className="bg-slate-50 border-b border-slate-100 pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Plus className="w-5 h-5 text-blue-600" /> Nuevo Visitante
+              <Plus className="w-5 h-5 text-blue-600" /> {editingId ? "Editar Visitante" : "Nuevo Visitante"}
             </CardTitle>
-            <CardDescription>Generar un pase de acceso temporal.</CardDescription>
+            <CardDescription>{editingId ? "Modificar los datos del pase." : "Generar un pase de acceso temporal."}</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             <form onSubmit={handleCrearVisitante} className="space-y-4">
@@ -153,9 +186,26 @@ export default function VisitantesPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full mt-4 bg-[#0a1e36] text-white hover:bg-[#163354] h-11 font-bold">
-                Autorizar Pase
-              </Button>
+              <div className="flex gap-2 mt-4">
+                <Button type="submit" className="w-full bg-[#0a1e36] text-white hover:bg-[#163354] h-11 font-bold">
+                  {editingId ? "Guardar Cambios" : "Autorizar Pase"}
+                </Button>
+                {editingId && (
+                  <Button type="button" variant="outline" className="w-full h-11" onClick={() => {
+                    setEditingId(null);
+                    setDocumento("");
+                    setNombre("");
+                    setEmpresa("");
+                    setMotivo("");
+                    setFechaInicio(new Date().toISOString().slice(0, 16));
+                    const tom = new Date();
+                    tom.setDate(tom.getDate() + 1);
+                    setFechaFin(tom.toISOString().slice(0, 16));
+                  }}>
+                    Cancelar
+                  </Button>
+                )}
+              </div>
             </form>
           </CardContent>
         </Card>
@@ -185,13 +235,14 @@ export default function VisitantesPage() {
                     <TableHead>Rango Autorizado</TableHead>
                     <TableHead>Motivo / Origen</TableHead>
                     <TableHead className="text-center">Estado</TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-10">Cargando...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-10">Cargando...</TableCell></TableRow>
                   ) : filteredVisitantes.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-10 text-slate-500">No hay visitantes registrados.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-10 text-slate-500">No hay visitantes registrados.</TableCell></TableRow>
                   ) : (
                     filteredVisitantes.map(v => {
                       const st = getEstadoVisitante(v.fecha_inicio, v.fecha_fin);
@@ -215,6 +266,16 @@ export default function VisitantesPage() {
                           </TableCell>
                           <TableCell className="text-center">
                             <Badge className={st.cls}>{st.lbl}</Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <button onClick={() => handleEdit(v)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Editar">
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDelete(v.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Eliminar">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
