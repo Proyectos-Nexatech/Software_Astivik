@@ -71,11 +71,35 @@ export default function ProyectosPage() {
     const { data: pData } = await supabase.from('proyectos').select('*').order('created_at', { ascending: false });
     
     // 2. Fetch Trabajadores for Aforo
-    const { data: tData } = await supabase.from('trabajadores').select('proyecto_asignado');
+    const { data: tData } = await supabase.from('trabajadores').select('id, proyecto_asignado');
+
+    // 2.5 Fetch Registros de Acceso de Hoy
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Para asegurarnos del timezone local, construimos la fecha en ISO (YYYY-MM-DD)
+    const tzOffset = today.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0] + 'T00:00:00.000Z';
+    
+    const { data: rData } = await supabase.from('registros_acceso')
+      .select('trabajador_id, tipo')
+      .gte('fecha_hora', localISOTime)
+      .order('fecha_hora', { ascending: true });
+
+    const insideWorkers = new Set();
+    if (rData) {
+      const stateByWorker: Record<string, string> = {};
+      rData.forEach((r: any) => {
+        if (r.trabajador_id) stateByWorker[r.trabajador_id] = r.tipo;
+      });
+      Object.entries(stateByWorker).forEach(([id, tipo]) => {
+         if (tipo === 'ENTRADA') insideWorkers.add(id);
+      });
+    }
 
     if (pData) {
       const proyectosWithAforo = pData.map(p => {
-        const aforo = tData ? tData.filter(t => t.proyecto_asignado === p.nombre).length : 0;
+        const aforo = tData ? tData.filter(t => t.proyecto_asignado === p.nombre && insideWorkers.has(t.id)).length : 0;
         return { ...p, aforo };
       });
       setProyectos(proyectosWithAforo);
