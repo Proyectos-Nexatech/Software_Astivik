@@ -69,9 +69,19 @@ export default function ProyectosPage() {
     setLoading(true);
     // 1. Fetch Proyectos
     const { data: pData } = await supabase.from('proyectos').select('*').order('created_at', { ascending: false });
-    if (pData) setProyectos(pData);
     
-    // 2. Fetch Directorio Contratistas
+    // 2. Fetch Trabajadores for Aforo
+    const { data: tData } = await supabase.from('trabajadores').select('proyecto_asignado');
+
+    if (pData) {
+      const proyectosWithAforo = pData.map(p => {
+        const aforo = tData ? tData.filter(t => t.proyecto_asignado === p.nombre).length : 0;
+        return { ...p, aforo };
+      });
+      setProyectos(proyectosWithAforo);
+    }
+    
+    // 3. Fetch Directorio Contratistas
     const { data: cData } = await supabase.from('contratistas').select('*').order('nombre', { ascending: true });
     if (cData) setContratistasDirectorio(cData);
     

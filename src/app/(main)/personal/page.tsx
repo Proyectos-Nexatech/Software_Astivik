@@ -24,13 +24,14 @@ export default function PersonalOperativoPage() {
   const supabase = createClient();
   const [personal, setPersonal] = useState<any[]>([]);
   const [contratistas, setContratistas] = useState<any[]>([]);
+  const [proyectos, setProyectos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ documento: "", nombre: "", cargo: "", empresa: "", estado_arl: "Al Día" });
+  const [form, setForm] = useState({ documento: "", nombre: "", cargo: "", empresa: "", estado_arl: "Al Día", proyecto_asignado: "" });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -108,9 +109,12 @@ export default function PersonalOperativoPage() {
       setPersonal(personalWithStatus);
     }
 
-    // 2. Fetch Contratistas
+    // 2. Fetch Contratistas y Proyectos
     const { data: cData } = await supabase.from('contratistas').select('nombre').order('nombre', { ascending: true });
     if (cData) setContratistas(cData);
+    
+    const { data: pData } = await supabase.from('proyectos').select('nombre').order('nombre', { ascending: true });
+    if (pData) setProyectos(pData);
     
     setLoading(false);
   };
@@ -127,12 +131,13 @@ export default function PersonalOperativoPage() {
           nombre: form.nombre,
           cargo: form.cargo,
           empresa: form.empresa,
-          estado_arl: form.estado_arl
+          estado_arl: form.estado_arl,
+          proyecto_asignado: form.proyecto_asignado || null
         }).eq('id', editingId).select();
 
         if (!error && data) {
           setPersonal(personal.map(p => p.id === editingId ? data[0] : p));
-          setForm({ documento: "", nombre: "", cargo: "", empresa: "", estado_arl: "Al Día" });
+          setForm({ documento: "", nombre: "", cargo: "", empresa: "", estado_arl: "Al Día", proyecto_asignado: "" });
           setIsModalOpen(false);
           setEditingId(null);
         } else {
@@ -145,12 +150,13 @@ export default function PersonalOperativoPage() {
           nombre: form.nombre,
           cargo: form.cargo,
           empresa: form.empresa,
-          estado_arl: form.estado_arl
+          estado_arl: form.estado_arl,
+          proyecto_asignado: form.proyecto_asignado || null
         }]).select();
 
         if (!error && data) {
           setPersonal([data[0], ...personal]);
-          setForm({ documento: "", nombre: "", cargo: "", empresa: "", estado_arl: "Al Día" });
+          setForm({ documento: "", nombre: "", cargo: "", empresa: "", estado_arl: "Al Día", proyecto_asignado: "" });
           setIsModalOpen(false);
         } else {
           alert("Error al guardar trabajador. Verifica que la cédula no esté duplicada.");
@@ -176,7 +182,8 @@ export default function PersonalOperativoPage() {
       nombre: trabajador.nombre,
       cargo: trabajador.cargo,
       empresa: trabajador.empresa,
-      estado_arl: trabajador.estado_arl
+      estado_arl: trabajador.estado_arl,
+      proyecto_asignado: trabajador.proyecto_asignado || ""
     });
     setEditingId(trabajador.id);
     setIsModalOpen(true);
@@ -284,7 +291,7 @@ export default function PersonalOperativoPage() {
           <Dialog open={isModalOpen} onOpenChange={(open) => {
             if (!open) {
               setEditingId(null);
-              setForm({ documento: "", nombre: "", cargo: "", empresa: "", estado_arl: "Al Día" });
+              setForm({ documento: "", nombre: "", cargo: "", empresa: "", estado_arl: "Al Día", proyecto_asignado: "" });
             }
             setIsModalOpen(open);
           }}>
@@ -324,19 +331,35 @@ export default function PersonalOperativoPage() {
                     <Input value={form.cargo} onChange={(e) => setForm({...form, cargo: e.target.value})} placeholder="Soldador" />
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label>Empresa Contratista</Label>
-                  <Select value={form.empresa} onValueChange={(val) => setForm({...form, empresa: val || ''})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccione una empresa" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {contratistas.map(c => (
-                        <SelectItem key={c.nombre} value={c.nombre}>{c.nombre}</SelectItem>
-                      ))}
-                      <SelectItem value="Astillero Interno">Astillero Interno</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Empresa Contratista</Label>
+                    <Select value={form.empresa} onValueChange={(val) => setForm({...form, empresa: val || ''})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione una empresa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {contratistas.map(c => (
+                          <SelectItem key={c.nombre} value={c.nombre}>{c.nombre}</SelectItem>
+                        ))}
+                        <SelectItem value="Astillero Interno">Astillero Interno</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Proyecto Asignado</Label>
+                    <Select value={form.proyecto_asignado} onValueChange={(val) => setForm({...form, proyecto_asignado: val === 'Ninguno' ? '' : val})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Ninguno" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Ninguno">Ninguno</SelectItem>
+                        {proyectos.map(p => (
+                          <SelectItem key={p.nombre} value={p.nombre}>{p.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
               <DialogFooter className="px-6 pb-6 pt-2 bg-transparent border-t-0">
@@ -367,7 +390,7 @@ export default function PersonalOperativoPage() {
                   <TableHead className="font-semibold px-6">Documento</TableHead>
                   <TableHead className="font-semibold">Nombre</TableHead>
                   <TableHead className="font-semibold">Cargo</TableHead>
-                  <TableHead className="font-semibold">Contratista</TableHead>
+                  <TableHead className="font-semibold">Contratista / Proyecto</TableHead>
                   <TableHead className="font-semibold text-center">Estado ARL / Docs</TableHead>
                   {puedeEditar && <TableHead className="font-semibold text-right px-6">Acciones</TableHead>}
                 </TableRow>
@@ -387,10 +410,17 @@ export default function PersonalOperativoPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="flex items-center gap-1.5 text-slate-600 text-sm font-semibold">
-                        <Building2 className="w-4 h-4 text-slate-400" />
-                        {p.empresa}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className="flex items-center gap-1.5 text-slate-600 text-sm font-semibold">
+                          <Building2 className="w-4 h-4 text-slate-400" />
+                          {p.empresa}
+                        </span>
+                        {p.proyecto_asignado && (
+                          <span className="text-[10px] bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-full w-fit">
+                            {p.proyecto_asignado}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-center">
                       {renderDocBadge(p.calculated_doc_status)}
