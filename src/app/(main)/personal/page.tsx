@@ -43,10 +43,15 @@ export default function PersonalOperativoPage() {
     let empresaFiltro = null;
     
     if (user) {
-      const { data: pData } = await supabase.from('perfiles_usuario').select('*, contratistas(nombre)').eq('id', user.id).single();
-      if (pData) setUserProfile(pData);
-      if (pData?.rol === 'lider_contratista' && pData?.contratistas?.nombre) {
-        empresaFiltro = pData.contratistas.nombre;
+      const { data: pData } = await supabase.from('perfiles_usuario').select('*').eq('id', user.id).single();
+      if (pData) {
+        setUserProfile(pData);
+        if (pData.rol === 'lider_contratista' && pData.contratista_id) {
+          const { data: empData } = await supabase.from('contratistas').select('nombre').eq('id', pData.contratista_id).single();
+          if (empData) {
+            empresaFiltro = empData.nombre;
+          }
+        }
       }
     }
 
