@@ -519,7 +519,12 @@ export default function ControlAccesoPage() {
                                   </span>
                                 </TableCell>
                                 <TableCell className="py-3">
-                                  <div className="font-black text-slate-900 group-hover:text-blue-700 transition-colors">{r.trabajadores?.nombre || r.visitantes?.nombre}</div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="font-black text-slate-900 group-hover:text-blue-700 transition-colors">{r.trabajadores?.nombre || r.visitantes?.nombre}</div>
+                                    {r.visitantes && (
+                                      <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 text-[9px] px-1.5 py-0 h-4">VISITANTE</Badge>
+                                    )}
+                                  </div>
                                   <div className="text-[11px] text-slate-500 font-medium">{r.trabajadores?.empresa || r.visitantes?.empresa_origen || 'Visitante'}</div>
                                 </TableCell>
                                 <TableCell className="text-center align-middle py-3">
