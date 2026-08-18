@@ -1,15 +1,17 @@
 "use client";
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutDashboard, Users, Settings, HelpCircle, LogOut, FileCheck, Building2, ShieldCheck, Key, UserCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Home, LayoutDashboard, Users, Settings, FileCheck, Building2, ShieldCheck, Key, UserCircle, ChevronDown, ChevronRight, Briefcase } from 'lucide-react';
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [operacionesOpen, setOperacionesOpen] = useState(true);
+  const [accesoOpen, setAccesoOpen] = useState(true);
 
-  const getLinkClasses = (isActive: boolean) => {
-    const base = "flex items-center justify-center md:justify-start gap-3 px-2 md:px-3 py-2 font-medium text-sm transition-all border-l-[3px] rounded-r-md";
+  const getLinkClasses = (isActive: boolean, isSubmenu: boolean = false) => {
+    const base = `flex items-center justify-center md:justify-start gap-3 px-2 md:px-3 py-2 font-medium text-sm transition-all border-l-[3px] rounded-r-md ${isSubmenu ? 'md:ml-4' : ''}`;
     if (isActive) {
       return `${base} bg-white/10 text-cyan-300 border-cyan-400`;
     }
@@ -46,30 +48,70 @@ export function Sidebar() {
         <Link href="/" title="Dashboard" className={getLinkClasses(pathname === '/')}>
           <LayoutDashboard className="w-5 h-5 md:w-4 md:h-4 shrink-0" /> <span className="hidden md:inline">Dashboard</span>
         </Link>
-        <Link href="/proyectos" title="Proyectos" className={getLinkClasses(pathname.startsWith('/proyectos'))}>
-          <Home className="w-5 h-5 md:w-4 md:h-4 shrink-0" /> <span className="hidden md:inline">Proyectos</span>
-        </Link>
-        <Link href="/contratistas" title="Contratistas" className={getLinkClasses(pathname.startsWith('/contratistas'))}>
-          <Building2 className="w-5 h-5 md:w-4 md:h-4 shrink-0" /> <span className="hidden md:inline">Contratistas</span>
-        </Link>
-        <Link href="/personal" title="Personal" className={getLinkClasses(pathname.startsWith('/personal'))}>
-          <Users className="w-5 h-5 md:w-4 md:h-4 shrink-0" /> <span className="hidden md:inline">Personal</span>
-        </Link>
-        <Link href="/visitantes" title="Visitantes" className={getLinkClasses(pathname.startsWith('/visitantes'))}>
-          <UserCircle className="w-5 h-5 md:w-4 md:h-4 shrink-0" /> <span className="hidden md:inline">Visitantes</span>
-        </Link>
-        <Link href="/documentos" title="Documentos HSE" className={getLinkClasses(pathname.startsWith('/documentos'))}>
-          <ShieldCheck className="w-5 h-5 md:w-4 md:h-4 shrink-0" /> <span className="hidden md:inline">Documentos HSE</span>
-        </Link>
-        <Link href="/acceso" title="Control de Acceso" className={getLinkClasses(pathname.startsWith('/acceso'))}>
-          <Key className="w-5 h-5 md:w-4 md:h-4 shrink-0" /> <span className="hidden md:inline">Control de Acceso</span>
-        </Link>
-        <Link href="/reportes" title="Reportes de Cumplimiento" className={getLinkClasses(pathname.startsWith('/reportes'))}>
-          <FileCheck className="w-5 h-5 md:w-4 md:h-4 shrink-0" /> <span className="hidden md:inline">Reportes de Cumplimiento</span>
-        </Link>
-        <Link href="/configuracion" title="Configuración" className={getLinkClasses(pathname.startsWith('/configuracion'))}>
-          <Settings className="w-5 h-5 md:w-4 md:h-4 shrink-0" /> <span className="hidden md:inline">Configuración</span>
-        </Link>
+        
+        {/* GRUPO: OPERACIONES HSE */}
+        <div className="pt-2">
+          <button 
+            onClick={() => setOperacionesOpen(!operacionesOpen)}
+            className="w-full flex items-center justify-center md:justify-between px-2 md:px-3 py-2 text-slate-400 hover:text-white transition-colors group"
+            title="Operaciones HSE"
+          >
+            <div className="flex items-center gap-3">
+              <Briefcase className="w-5 h-5 md:w-4 md:h-4 shrink-0" />
+              <span className="hidden md:inline text-xs font-bold uppercase tracking-wider">Operaciones HSE</span>
+            </div>
+            {operacionesOpen ? <ChevronDown className="hidden md:block w-4 h-4 shrink-0" /> : <ChevronRight className="hidden md:block w-4 h-4 shrink-0" />}
+          </button>
+          
+          <div className={`space-y-1 mt-1 ${operacionesOpen ? 'block' : 'hidden md:hidden'}`}>
+            <Link href="/proyectos" title="Proyectos" className={getLinkClasses(pathname.startsWith('/proyectos'), true)}>
+              <Home className="w-5 h-5 md:w-4 md:h-4 shrink-0 opacity-0 md:hidden" /> <span className="hidden md:inline relative before:content-[''] before:absolute before:-left-3 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-1.5 before:bg-slate-500 before:rounded-full">Proyectos</span>
+            </Link>
+            <Link href="/documentos" title="Documentos HSE" className={getLinkClasses(pathname.startsWith('/documentos'), true)}>
+              <ShieldCheck className="w-5 h-5 md:w-4 md:h-4 shrink-0 opacity-0 md:hidden" /> <span className="hidden md:inline relative before:content-[''] before:absolute before:-left-3 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-1.5 before:bg-slate-500 before:rounded-full">Documentos HSE</span>
+            </Link>
+            <Link href="/contratistas" title="Contratistas" className={getLinkClasses(pathname.startsWith('/contratistas'), true)}>
+              <Building2 className="w-5 h-5 md:w-4 md:h-4 shrink-0 opacity-0 md:hidden" /> <span className="hidden md:inline relative before:content-[''] before:absolute before:-left-3 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-1.5 before:bg-slate-500 before:rounded-full">Contratistas</span>
+            </Link>
+            <Link href="/reportes" title="Reportes de Cumplimiento" className={getLinkClasses(pathname.startsWith('/reportes'), true)}>
+              <FileCheck className="w-5 h-5 md:w-4 md:h-4 shrink-0 opacity-0 md:hidden" /> <span className="hidden md:inline relative before:content-[''] before:absolute before:-left-3 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-1.5 before:bg-slate-500 before:rounded-full">Reportes Cumplimiento</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* GRUPO: CONTROL DE ACCESO */}
+        <div className="pt-2">
+          <button 
+            onClick={() => setAccesoOpen(!accesoOpen)}
+            className="w-full flex items-center justify-center md:justify-between px-2 md:px-3 py-2 text-slate-400 hover:text-white transition-colors group"
+            title="Control de Acceso"
+          >
+            <div className="flex items-center gap-3">
+              <Key className="w-5 h-5 md:w-4 md:h-4 shrink-0" />
+              <span className="hidden md:inline text-xs font-bold uppercase tracking-wider">Control de Acceso</span>
+            </div>
+            {accesoOpen ? <ChevronDown className="hidden md:block w-4 h-4 shrink-0" /> : <ChevronRight className="hidden md:block w-4 h-4 shrink-0" />}
+          </button>
+          
+          <div className={`space-y-1 mt-1 ${accesoOpen ? 'block' : 'hidden md:hidden'}`}>
+            <Link href="/acceso" title="Torniquete" className={getLinkClasses(pathname.startsWith('/acceso'), true)}>
+              <Key className="w-5 h-5 md:w-4 md:h-4 shrink-0 opacity-0 md:hidden" /> <span className="hidden md:inline relative before:content-[''] before:absolute before:-left-3 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-1.5 before:bg-slate-500 before:rounded-full">Torniquete</span>
+            </Link>
+            <Link href="/personal" title="Personal" className={getLinkClasses(pathname.startsWith('/personal'), true)}>
+              <Users className="w-5 h-5 md:w-4 md:h-4 shrink-0 opacity-0 md:hidden" /> <span className="hidden md:inline relative before:content-[''] before:absolute before:-left-3 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-1.5 before:bg-slate-500 before:rounded-full">Personal</span>
+            </Link>
+            <Link href="/visitantes" title="Visitantes" className={getLinkClasses(pathname.startsWith('/visitantes'), true)}>
+              <UserCircle className="w-5 h-5 md:w-4 md:h-4 shrink-0 opacity-0 md:hidden" /> <span className="hidden md:inline relative before:content-[''] before:absolute before:-left-3 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-1.5 before:bg-slate-500 before:rounded-full">Visitantes</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* GRUPO: CONFIGURACIÓN */}
+        <div className="pt-2">
+          <Link href="/configuracion" title="Configuración" className={getLinkClasses(pathname.startsWith('/configuracion'))}>
+            <Settings className="w-5 h-5 md:w-4 md:h-4 shrink-0" /> <span className="hidden md:inline">Configuración</span>
+          </Link>
+        </div>
       </nav>
     </aside>
   );
