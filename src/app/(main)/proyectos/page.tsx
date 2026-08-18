@@ -104,6 +104,8 @@ export default function ProyectosPage() {
     }
   };
 
+  const [projectStats, setProjectStats] = useState<any[]>([]);
+
   // ----- LOGIC FOR DETAILS MODAL & ACTIVITIES -----
   
   const openDetailsModal = async (proyecto: any) => {
@@ -112,6 +114,84 @@ export default function ProyectosPage() {
     await fetchActividades(proyecto.id);
   };
   
+  const computeStatsForContratistas = async (contratistasList: any[]) => {
+    if (contratistasList.length === 0) return [];
+    
+    const { data: workersData } = await supabase.from('trabajadores').select('*');
+    const { data: docsData } = await supabase.from('documentos_hse').select('*');
+    
+    const requiredDocsByCargo: Record<string, string[]> = {
+      "Soldador 1A": ["ss", "examen", "alturas", "confinados", "soldadura"],
+      "Sandblaster": ["ss", "examen", "alturas", "confinados"],
+      "Electricista": ["ss", "examen", "alturas"]
+    };
+
+    const calculateEstado = (dateStr: string) => {
+      if (!dateStr) return "Faltante";
+      const todayDate = new Date();
+      todayDate.setHours(0, 0, 0, 0);
+      const expiryDate = new Date(dateStr + 'T00:00:00');
+      const diffDays = Math.ceil((expiryDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays < 0) return "Vencido";
+      if (diffDays <= 30) return "Por Vencer";
+      return "Vigente";
+    };
+
+    const getGlobalStatus = (docs: any) => {
+      let hasVencido = false;
+      let hasWarning = false;
+      let hasFaltante = false;
+      let hasNoAprobado = false;
+      Object.values(docs).forEach((doc: any) => {
+        if (doc) {
+          if (doc.estado === "Vencido") hasVencido = true;
+          if (doc.estado === "Faltante") hasFaltante = true;
+          if (doc.estado === "Por Vencer") hasWarning = true;
+          if (doc.estado_aprobacion !== "Aprobado" && doc.estado !== "Faltante") hasNoAprobado = true;
+        }
+      });
+      if (hasVencido || hasFaltante || hasNoAprobado) return "INHABILITADO";
+      if (hasWarning) return "ALERTA PREVENTIVA";
+      return "HABILITADO";
+    };
+
+    return contratistasList.map((c: any) => {
+      const cWorkers = (workersData || []).filter(w => 
+        w.empresa?.toLowerCase() === c.nombre?.toLowerCase() || 
+        w.empresa?.toLowerCase().includes(c.nombre?.toLowerCase())
+      );
+      
+      let habilitados = 0;
+      cWorkers.forEach(worker => {
+        const docsMap: any = {};
+        const requiredKeys = requiredDocsByCargo[worker.cargo] || ["ss", "examen"];
+        requiredKeys.forEach(key => { docsMap[key] = { estado: "Faltante", estado_aprobacion: "Pendiente" }; });
+        
+        docsData?.filter(d => d.trabajador_id === worker.id).forEach(d => {
+          if (d.tipo_documento && requiredKeys.includes(d.tipo_documento)) {
+            docsMap[d.tipo_documento] = {
+              estado: calculateEstado(d.fecha_vencimiento),
+              estado_aprobacion: d.estado_aprobacion || "Pendiente"
+            };
+          }
+        });
+
+        const globalStatus = getGlobalStatus(docsMap);
+        if (globalStatus === "HABILITADO" || globalStatus === "ALERTA PREVENTIVA") habilitados++;
+      });
+
+      const totalWorkers = cWorkers.length;
+      const aptoPorcentaje = totalWorkers > 0 ? Math.round((habilitados / totalWorkers) * 100) : 0;
+
+      return {
+        id: c.nombre, // use nombre as unique key
+        empresa: c.nombre,
+        asignados: totalWorkers,
+        habilitacion: aptoPorcentaje
+      };
+    });
+  };
+
   const fetchActividades = async (proyectoId: string) => {
     // Fetch actividades y sus asignaciones
     const { data, error } = await supabase
@@ -128,6 +208,18 @@ export default function ProyectosPage() {
       
     if (data) {
       setActividades(data);
+      
+      const uniqueContratistas = new Map();
+      data.forEach(act => {
+        act.actividad_contratistas?.forEach((ac: any) => {
+           if (ac.contratistas && !uniqueContratistas.has(ac.contratista_id)) {
+              uniqueContratistas.set(ac.contratista_id, ac.contratistas);
+           }
+        });
+      });
+
+      const stats = await computeStatsForContratistas(Array.from(uniqueContratistas.values()));
+      setProjectStats(stats);
     }
   };
 
@@ -588,7 +680,7 @@ export default function ProyectosPage() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {mockContratistasStats.map((c) => (
+                          {projectStats.length > 0 ? projectStats.map((c) => (
                             <TableRow key={c.id}>
                               <TableCell className="font-medium text-xs">{c.empresa}</TableCell>
                               <TableCell className="text-center text-xs">{c.asignados}</TableCell>
@@ -598,7 +690,11 @@ export default function ProyectosPage() {
                                 </span>
                               </TableCell>
                             </TableRow>
-                          ))}
+                          )) : (
+                            <TableRow>
+                              <TableCell colSpan={3} className="text-center py-4 text-xs text-slate-500 italic">No hay contratistas asignados a las actividades de este proyecto.</TableCell>
+                            </TableRow>
+                          )}
                         </TableBody>
                       </Table>
                     </div>
