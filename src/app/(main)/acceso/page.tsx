@@ -32,6 +32,7 @@ export default function ControlAccesoPage() {
   const [vigenciasConfig, setVigenciasConfig] = useState<Record<string, number>>({});
   const [transitosSearch, setTransitosSearch] = useState("");
   const [transitosFiltroTipo, setTransitosFiltroTipo] = useState("TODOS");
+  const [filtroTiempoVivo, setFiltroTiempoVivo] = useState<'hoy' | 'mes' | 'ano' | 'todos'>('hoy');
   const [visibleLimit, setVisibleLimit] = useState(10);
 
   // Report State
@@ -46,6 +47,10 @@ export default function ControlAccesoPage() {
   }, []);
 
   useEffect(() => {
+    fetchRegistrosRecientes();
+  }, [filtroTiempoVivo]);
+
+  useEffect(() => {
     generarReporte();
   }, [filtroRango, filtroEmpresa, filtroProyecto]); // Auto-refresh report when filters change
 
@@ -58,24 +63,48 @@ export default function ControlAccesoPage() {
     const { data: configData } = await supabase.from('configuracion_vigencias').select('*');
     const vConfig: Record<string, number> = { ss: 1, examen: 12, alturas: 12, confinados: 12, soldadura: 6 };
     if (configData) {
-      configData.forEach((row: any) => { vConfig[row.tipo_documento] = row.periodo_meses; });
+      configData.forEach(c => {
+        vConfig[c.tipo_documento] = c.meses_vigencia;
+      });
     }
     setVigenciasConfig(vConfig);
 
-    // 3. Fetch latest logs
     fetchRegistrosRecientes();
-
-    // 4. Fetch Empresas for Filter
-    const { data: cData } = await supabase.from('contratistas').select('nombre');
+    
+    // 3. Fetch Empresas para Reporte
+    const { data: cData } = await supabase.from('contratistas').select('nombre').order('nombre', { ascending: true });
     if (cData) setEmpresasUnicas(cData.map(c => c.nombre));
   };
 
   const fetchRegistrosRecientes = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from('registros_acceso')
       .select('*, trabajadores(nombre, empresa, documento), proyectos(nombre)')
-      .order('fecha_hora', { ascending: false })
-      .limit(100);
+      .order('fecha_hora', { ascending: false });
+      
+    const now = new Date();
+    const tzOffset = now.getTimezoneOffset() * 60000;
+    
+    if (filtroTiempoVivo === 'hoy') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const localISOTime = (new Date(today.getTime() - tzOffset)).toISOString().split('T')[0] + 'T00:00:00.000Z';
+      query = query.gte('fecha_hora', localISOTime);
+    } else if (filtroTiempoVivo === 'mes') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const localISOTime = (new Date(startOfMonth.getTime() - tzOffset)).toISOString().split('T')[0] + 'T00:00:00.000Z';
+      query = query.gte('fecha_hora', localISOTime);
+    } else if (filtroTiempoVivo === 'ano') {
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const localISOTime = (new Date(startOfYear.getTime() - tzOffset)).toISOString().split('T')[0] + 'T00:00:00.000Z';
+      query = query.gte('fecha_hora', localISOTime);
+    }
+    
+    if (filtroTiempoVivo === 'todos') {
+      query = query.limit(200);
+    }
+
+    const { data } = await query;
     if (data) setRegistrosRecientes(data);
   };
 
@@ -422,14 +451,27 @@ export default function ControlAccesoPage() {
               </CardHeader>
               <CardContent className="p-4 flex flex-col flex-1">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input 
-                      placeholder="Buscar por Nombre o Empresa" 
-                      className="pl-9 h-9" 
-                      value={transitosSearch}
-                      onChange={e => setTransitosSearch(e.target.value)}
-                    />
+                  <div className="flex gap-2 flex-1">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input 
+                        placeholder="Buscar por Nombre o Empresa" 
+                        className="pl-9 h-9" 
+                        value={transitosSearch}
+                        onChange={e => setTransitosSearch(e.target.value)}
+                      />
+                    </div>
+                    <Select value={filtroTiempoVivo} onValueChange={(val: any) => setFiltroTiempoVivo(val)}>
+                      <SelectTrigger className="w-[140px] h-9">
+                        <SelectValue placeholder="Rango" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hoy">Día Actual</SelectItem>
+                        <SelectItem value="mes">Mes Actual</SelectItem>
+                        <SelectItem value="ano">Año Actual</SelectItem>
+                        <SelectItem value="todos">Histórico</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex gap-1 bg-slate-100 p-1 rounded-md text-sm font-medium">
                     <button onClick={() => setTransitosFiltroTipo('TODOS')} className={`px-3 py-1 rounded-md transition-colors ${transitosFiltroTipo === 'TODOS' ? 'bg-[#0a1e36] text-white' : 'text-slate-600 hover:bg-slate-200'}`}>Todos</button>
