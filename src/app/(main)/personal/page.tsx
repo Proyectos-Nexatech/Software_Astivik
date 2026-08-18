@@ -348,7 +348,7 @@ export default function PersonalOperativoPage() {
                   </div>
                   <div className="grid gap-2">
                     <Label>Proyecto Asignado</Label>
-                    <Select value={form.proyecto_asignado} onValueChange={(val) => setForm({...form, proyecto_asignado: val === 'Ninguno' ? '' : val})}>
+                    <Select value={form.proyecto_asignado} onValueChange={(val) => setForm({...form, proyecto_asignado: val === 'Ninguno' || !val ? '' : val})}>
                       <SelectTrigger>
                         <SelectValue placeholder="Ninguno" />
                       </SelectTrigger>
