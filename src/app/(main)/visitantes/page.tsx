@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { UserCircle, Calendar, Plus, Clock, Search, Trash2, Pencil } from "lucide-react";
+import { UserCircle, Calendar, Plus, Clock, Search, Trash2, Pencil, LayoutList, ChevronLeft, ChevronRight } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 export default function VisitantesPage() {
@@ -15,6 +15,9 @@ export default function VisitantesPage() {
   const [visitantes, setVisitantes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // Form State
   const [documento, setDocumento] = useState("");
@@ -131,6 +134,32 @@ export default function VisitantesPage() {
     v.documento.includes(busqueda)
   );
 
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    const days = [];
+    for (let i = 0; i < firstDay.getDay(); i++) days.push(null);
+    for (let i = 1; i <= lastDay.getDate(); i++) days.push(new Date(year, month, i));
+    return days;
+  };
+
+  const getCalendarEvents = (day: Date | null) => {
+    if (!day) return [];
+    const dayStart = new Date(day);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(day);
+    dayEnd.setHours(23, 59, 59, 999);
+    
+    return filteredVisitantes.filter(v => {
+      const vStart = new Date(v.fecha_inicio);
+      const vEnd = new Date(v.fecha_fin);
+      return vStart <= dayEnd && vEnd >= dayStart;
+    });
+  };
+
   return (
     <div className="space-y-6 max-w-[1200px] mx-auto pb-10">
       <div className="flex items-center gap-3">
@@ -216,74 +245,133 @@ export default function VisitantesPage() {
               <CardTitle className="text-lg">Registro Histórico</CardTitle>
               <CardDescription>Pases generados recientemente.</CardDescription>
             </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Buscar por cédula o nombre..."
-                className="pl-9 h-9"
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-              />
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto items-center">
+              <div className="flex bg-slate-100 p-1 rounded-md text-sm font-medium border border-slate-200 w-full sm:w-auto justify-center">
+                <button 
+                  onClick={() => setViewMode('table')} 
+                  className={`px-3 py-1.5 rounded-sm transition-colors flex items-center gap-1 ${viewMode === 'table' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+                  title="Vista de Tabla"
+                >
+                  <LayoutList className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => setViewMode('calendar')} 
+                  className={`px-3 py-1.5 rounded-sm transition-colors flex items-center gap-1 ${viewMode === 'calendar' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+                  title="Vista de Calendario"
+                >
+                  <Calendar className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Buscar por cédula o nombre..."
+                  className="pl-9 h-9"
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                />
+              </div>
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Visitante</TableHead>
-                    <TableHead>Rango Autorizado</TableHead>
-                    <TableHead>Motivo / Origen</TableHead>
-                    <TableHead className="text-center">Estado</TableHead>
-                    <TableHead className="text-center">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-10">Cargando...</TableCell></TableRow>
-                  ) : filteredVisitantes.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-10 text-slate-500">No hay visitantes registrados.</TableCell></TableRow>
-                  ) : (
-                    filteredVisitantes.map(v => {
-                      const st = getEstadoVisitante(v.fecha_inicio, v.fecha_fin);
-                      return (
-                        <TableRow key={v.id}>
-                          <TableCell>
-                            <div className="font-bold text-slate-800 text-sm">{v.nombre}</div>
-                            <div className="text-xs text-slate-500">CC. {v.documento}</div>
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            <div className="flex items-center gap-1 text-slate-700">
-                              <span className="font-semibold text-green-700">Inicia:</span> {new Date(v.fecha_inicio).toLocaleString()}
-                            </div>
-                            <div className="flex items-center gap-1 text-slate-700">
-                              <span className="font-semibold text-red-700">Vence:</span> {new Date(v.fecha_fin).toLocaleString()}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm">{v.empresa_origen || '-'}</div>
-                            <div className="text-xs text-slate-500">{v.motivo_visita || '-'}</div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge className={st.cls}>{st.lbl}</Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <button onClick={() => handleEdit(v)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Editar">
-                                <Pencil className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => handleDelete(v.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Eliminar">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+            {viewMode === 'table' ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Visitante</TableHead>
+                      <TableHead>Rango Autorizado</TableHead>
+                      <TableHead>Motivo / Origen</TableHead>
+                      <TableHead className="text-center">Estado</TableHead>
+                      <TableHead className="text-center">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow><TableCell colSpan={5} className="text-center py-10">Cargando...</TableCell></TableRow>
+                    ) : filteredVisitantes.length === 0 ? (
+                      <TableRow><TableCell colSpan={5} className="text-center py-10 text-slate-500">No hay visitantes registrados.</TableCell></TableRow>
+                    ) : (
+                      filteredVisitantes.map(v => {
+                        const st = getEstadoVisitante(v.fecha_inicio, v.fecha_fin);
+                        return (
+                          <TableRow key={v.id}>
+                            <TableCell>
+                              <div className="font-bold text-slate-800 text-sm">{v.nombre}</div>
+                              <div className="text-xs text-slate-500">CC. {v.documento}</div>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <div className="flex items-center gap-1 text-slate-700">
+                                <span className="font-semibold text-green-700">Inicia:</span> {new Date(v.fecha_inicio).toLocaleString()}
+                              </div>
+                              <div className="flex items-center gap-1 text-slate-700">
+                                <span className="font-semibold text-red-700">Vence:</span> {new Date(v.fecha_fin).toLocaleString()}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">{v.empresa_origen || '-'}</div>
+                              <div className="text-xs text-slate-500">{v.motivo_visita || '-'}</div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge className={st.cls}>{st.lbl}</Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button onClick={() => handleEdit(v)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Editar">
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => handleDelete(v.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Eliminar">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="p-4 bg-slate-50/50">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-slate-800 text-lg capitalize">
+                    {currentMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
+                  </h3>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}>
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}>
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(day => (
+                    <div key={day} className="text-center font-bold text-xs text-slate-500 py-2">{day}</div>
+                  ))}
+                  {getDaysInMonth(currentMonth).map((date, i) => (
+                    <div key={i} className={`min-h-[100px] border border-slate-200 rounded-md p-1 ${!date ? 'bg-slate-100 opacity-50' : 'bg-white shadow-sm'}`}>
+                      {date && (
+                        <>
+                          <div className={`text-xs font-bold mb-1 w-6 h-6 flex items-center justify-center rounded-full ${date.toDateString() === new Date().toDateString() ? 'bg-[#0a1e36] text-white' : 'text-slate-700'}`}>
+                            {date.getDate()}
+                          </div>
+                          <div className="space-y-1 overflow-y-auto max-h-[70px] custom-scrollbar">
+                            {getCalendarEvents(date).map((v, vi) => (
+                              <div key={vi} className="text-[10px] leading-tight p-1 bg-blue-50 text-blue-800 rounded border border-blue-100 truncate cursor-pointer hover:bg-blue-100 transition-colors" title={`${v.nombre} (${getEstadoVisitante(v.fecha_inicio, v.fecha_fin).lbl})`} onClick={() => handleEdit(v)}>
+                                {v.nombre}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
