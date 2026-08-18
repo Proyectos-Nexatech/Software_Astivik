@@ -79,7 +79,7 @@ export default function ControlAccesoPage() {
   const fetchRegistrosRecientes = async () => {
     let query = supabase
       .from('registros_acceso')
-      .select('*, trabajadores(nombre, empresa, documento), proyectos(nombre)')
+      .select('*, trabajadores(nombre, empresa, documento), proyectos(nombre), visitantes(nombre, empresa_origen, documento)')
       .order('fecha_hora', { ascending: false });
       
     const now = new Date();
@@ -223,11 +223,18 @@ export default function ControlAccesoPage() {
   const registrarAcceso = async (tipo: 'ENTRADA' | 'SALIDA') => {
     if (!trabajadorActual) return;
     
-    const { error } = await supabase.from('registros_acceso').insert([{
-      trabajador_id: trabajadorActual.id,
+    const payload: any = {
       tipo: tipo,
       proyecto_id: proyectoSeleccionado && proyectoSeleccionado !== "none" ? proyectoSeleccionado : null
-    }]);
+    };
+
+    if (trabajadorActual.es_visitante) {
+      payload.visitante_id = trabajadorActual.id;
+    } else {
+      payload.trabajador_id = trabajadorActual.id;
+    }
+
+    const { error } = await supabase.from('registros_acceso').insert([payload]);
 
     if (!error) {
       setDocumentoBusqueda("");
@@ -244,7 +251,7 @@ export default function ControlAccesoPage() {
   const generarReporte = async () => {
     let query = supabase
       .from('registros_acceso')
-      .select('*, trabajadores!inner(nombre, empresa, documento), proyectos(nombre)')
+      .select('*, trabajadores(nombre, empresa, documento), proyectos(nombre), visitantes(nombre, empresa_origen, documento)')
       .order('fecha_hora', { ascending: false });
 
     // Rango
@@ -286,9 +293,9 @@ export default function ControlAccesoPage() {
     const exportFormat = reportData.map(r => ({
       Fecha: new Date(r.fecha_hora).toLocaleDateString(),
       Hora: new Date(r.fecha_hora).toLocaleTimeString(),
-      Documento: r.trabajadores?.documento,
-      Trabajador: r.trabajadores?.nombre,
-      Empresa: r.trabajadores?.empresa,
+      Documento: r.trabajadores?.documento || r.visitantes?.documento,
+      Trabajador: r.trabajadores?.nombre || r.visitantes?.nombre,
+      Empresa: r.trabajadores?.empresa || r.visitantes?.empresa_origen || 'Visitante',
       Tipo: r.tipo,
       Proyecto: r.proyectos?.nombre || 'General'
     }));
@@ -512,8 +519,8 @@ export default function ControlAccesoPage() {
                                   </span>
                                 </TableCell>
                                 <TableCell className="py-3">
-                                  <div className="font-black text-slate-900 group-hover:text-blue-700 transition-colors">{r.trabajadores?.nombre}</div>
-                                  <div className="text-[11px] text-slate-500 font-medium">{r.trabajadores?.empresa}</div>
+                                  <div className="font-black text-slate-900 group-hover:text-blue-700 transition-colors">{r.trabajadores?.nombre || r.visitantes?.nombre}</div>
+                                  <div className="text-[11px] text-slate-500 font-medium">{r.trabajadores?.empresa || r.visitantes?.empresa_origen || 'Visitante'}</div>
                                 </TableCell>
                                 <TableCell className="text-center align-middle py-3">
                                   <div className="flex justify-center">
@@ -611,10 +618,10 @@ export default function ControlAccesoPage() {
                           <div className="text-xs text-slate-500">{new Date(r.fecha_hora).toLocaleTimeString()}</div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-bold text-slate-800 text-sm">{r.trabajadores?.nombre}</div>
-                          <div className="text-xs text-slate-500">C.C. {r.trabajadores?.documento}</div>
+                          <div className="font-bold text-slate-800 text-sm">{r.trabajadores?.nombre || r.visitantes?.nombre}</div>
+                          <div className="text-xs text-slate-500">C.C. {r.trabajadores?.documento || r.visitantes?.documento}</div>
                         </TableCell>
-                        <TableCell className="text-sm font-medium">{r.trabajadores?.empresa}</TableCell>
+                        <TableCell className="text-sm font-medium">{r.trabajadores?.empresa || r.visitantes?.empresa_origen || 'Visitante'}</TableCell>
                         <TableCell className="text-sm text-slate-600">{r.proyectos?.nombre || 'Planta General'}</TableCell>
                         <TableCell className="text-center">
                           <Badge className={r.tipo === 'ENTRADA' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}>
