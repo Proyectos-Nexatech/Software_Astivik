@@ -113,6 +113,13 @@ export function Sidebar() {
           </Link>
         </div>
       </nav>
+      
+      {/* Footer */}
+      <div className="p-4 border-t border-white/10 hidden md:block shrink-0 mt-auto">
+        <p className="text-xs text-white text-center">
+          © 2026 Nexatech. Todos los derechos reservados.
+        </p>
+      </div>
     </aside>
   );
 }
