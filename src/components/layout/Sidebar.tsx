@@ -44,7 +44,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 py-4 px-2 md:pr-3 md:pl-0 space-y-1 overflow-y-auto">
+      <nav className="flex-1 py-4 px-2 md:pr-3 md:pl-0 space-y-1 overflow-y-auto scrollbar-hide">
         <Link href="/" title="Dashboard" className={getLinkClasses(pathname === '/')}>
           <LayoutDashboard className="w-5 h-5 md:w-4 md:h-4 shrink-0" /> <span className="hidden md:inline">Dashboard</span>
         </Link>
