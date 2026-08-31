@@ -64,6 +64,9 @@ export function Sidebar() {
           </button>
           
           <div className={`space-y-1 mt-1 ${operacionesOpen ? 'block' : 'hidden md:hidden'}`}>
+            <Link href="/dashboard-hse" title="Dashboard HSE" className={getLinkClasses(pathname.startsWith('/dashboard-hse'), true)}>
+              <LayoutDashboard className="w-5 h-5 md:w-4 md:h-4 shrink-0 opacity-0 md:hidden" /> <span className="hidden md:inline relative before:content-[''] before:absolute before:-left-3 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-1.5 before:bg-slate-500 before:rounded-full">Dashboard HSE</span>
+            </Link>
             <Link href="/proyectos" title="Proyectos" className={getLinkClasses(pathname.startsWith('/proyectos'), true)}>
               <Home className="w-5 h-5 md:w-4 md:h-4 shrink-0 opacity-0 md:hidden" /> <span className="hidden md:inline relative before:content-[''] before:absolute before:-left-3 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-1.5 before:bg-slate-500 before:rounded-full">Proyectos</span>
             </Link>
