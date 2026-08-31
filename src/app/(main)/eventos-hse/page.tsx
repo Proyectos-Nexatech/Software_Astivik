@@ -132,7 +132,7 @@ export default function EventosHsePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Tipo de Evento</Label>
-                  <Select required value={formData.tipo_evento} onValueChange={(v) => setFormData({...formData, tipo_evento: v})}>
+                  <Select required value={formData.tipo_evento || ''} onValueChange={(v) => setFormData({...formData, tipo_evento: v})}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="INCIDENTE">Incidente</SelectItem>
@@ -142,7 +142,7 @@ export default function EventosHsePage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Severidad</Label>
-                  <Select required value={formData.severidad} onValueChange={(v) => setFormData({...formData, severidad: v})}>
+                  <Select required value={formData.severidad || ''} onValueChange={(v) => setFormData({...formData, severidad: v})}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="BAJA">Baja</SelectItem>
@@ -156,23 +156,23 @@ export default function EventosHsePage() {
               
               <div className="space-y-2">
                 <Label>Fecha y Hora del Evento</Label>
-                <Input type="datetime-local" required value={formData.fecha_evento} onChange={e => setFormData({...formData, fecha_evento: e.target.value})} />
+                <Input type="datetime-local" required value={formData.fecha_evento || ''} onChange={e => setFormData({...formData, fecha_evento: e.target.value})} />
               </div>
 
               <div className="space-y-2">
                 <Label>Lugar Exacto</Label>
-                <Input required placeholder="Ej. Taller 1, Dique Seco..." value={formData.lugar_exacto} onChange={e => setFormData({...formData, lugar_exacto: e.target.value})} />
+                <Input required placeholder="Ej. Taller 1, Dique Seco..." value={formData.lugar_exacto || ''} onChange={e => setFormData({...formData, lugar_exacto: e.target.value})} />
               </div>
 
               <div className="space-y-2">
                 <Label>Descripción del Evento</Label>
-                <Input required placeholder="Detalla lo sucedido..." value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} />
+                <Input required placeholder="Detalla lo sucedido..." value={formData.descripcion || ''} onChange={e => setFormData({...formData, descripcion: e.target.value})} />
               </div>
 
               {editingId && (
                 <div className="space-y-2 border-t pt-4 mt-2">
                   <Label>Estado de la Investigación</Label>
-                  <Select required value={formData.estado_investigacion} onValueChange={(v) => setFormData({...formData, estado_investigacion: v})}>
+                  <Select required value={formData.estado_investigacion || ''} onValueChange={(v) => setFormData({...formData, estado_investigacion: v})}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ABIERTA">Abierta</SelectItem>

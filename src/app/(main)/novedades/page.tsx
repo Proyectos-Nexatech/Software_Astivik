@@ -135,11 +135,11 @@ export default function NovedadesPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Fecha</Label>
-                  <Input type="date" required value={formData.fecha} onChange={e => setFormData({...formData, fecha: e.target.value})} />
+                  <Input type="date" required value={formData.fecha || ''} onChange={e => setFormData({...formData, fecha: e.target.value})} />
                 </div>
                 <div className="space-y-2">
                   <Label>Empresa / Contratista</Label>
-                  <Select required value={formData.empresa} onValueChange={(v) => setFormData({...formData, empresa: v})}>
+                  <Select required value={formData.empresa || ''} onValueChange={(v) => setFormData({...formData, empresa: v})}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar empresa..." /></SelectTrigger>
                     <SelectContent>
                       {empresas.map((emp, idx) => (
@@ -151,7 +151,7 @@ export default function NovedadesPage() {
               </div>
               <div className="space-y-2">
                 <Label>Tipo de Novedad</Label>
-                <Select required value={formData.tipo_novedad} onValueChange={(v) => setFormData({...formData, tipo_novedad: v})}>
+                <Select required value={formData.tipo_novedad || ''} onValueChange={(v) => setFormData({...formData, tipo_novedad: v})}>
                   <SelectTrigger><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="CLIMA">Clima / Lluvia</SelectItem>
@@ -163,7 +163,7 @@ export default function NovedadesPage() {
               </div>
               <div className="space-y-2">
                 <Label>Descripción</Label>
-                <Input required placeholder="Describe lo ocurrido..." value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} />
+                <Input required placeholder="Describe lo ocurrido..." value={formData.descripcion || ''} onChange={e => setFormData({...formData, descripcion: e.target.value})} />
               </div>
               
               <div className="grid grid-cols-2 gap-4">

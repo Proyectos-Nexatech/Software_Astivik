@@ -136,7 +136,7 @@ export default function PermisosTrabajoPage() {
             <form onSubmit={handleSave} className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Proyecto</Label>
-                <Select required value={formData.proyecto_id} onValueChange={(v) => setFormData({...formData, proyecto_id: v})}>
+                <Select required value={formData.proyecto_id || ''} onValueChange={(v) => setFormData({...formData, proyecto_id: v})}>
                   <SelectTrigger><SelectValue placeholder="Seleccione un proyecto..." /></SelectTrigger>
                   <SelectContent>
                     {proyectos.map(p => (
@@ -148,7 +148,7 @@ export default function PermisosTrabajoPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Tipo de Permiso</Label>
-                  <Select required value={formData.tipo} onValueChange={(v) => setFormData({...formData, tipo: v})}>
+                  <Select required value={formData.tipo || ''} onValueChange={(v) => setFormData({...formData, tipo: v})}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ALTURAS">Trabajo en Alturas</SelectItem>
@@ -162,17 +162,17 @@ export default function PermisosTrabajoPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Solicitante</Label>
-                  <Input required placeholder="Nombre del solicitante" value={formData.solicitante_nombre} onChange={e => setFormData({...formData, solicitante_nombre: e.target.value})} />
+                  <Input required placeholder="Nombre del solicitante" value={formData.solicitante_nombre || ''} onChange={e => setFormData({...formData, solicitante_nombre: e.target.value})} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Fecha Inicio</Label>
-                  <Input type="datetime-local" required value={formData.fecha_inicio} onChange={e => setFormData({...formData, fecha_inicio: e.target.value})} />
+                  <Input type="datetime-local" required value={formData.fecha_inicio || ''} onChange={e => setFormData({...formData, fecha_inicio: e.target.value})} />
                 </div>
                 <div className="space-y-2">
                   <Label>Fecha Fin</Label>
-                  <Input type="datetime-local" value={formData.fecha_fin} onChange={e => setFormData({...formData, fecha_fin: e.target.value})} />
+                  <Input type="datetime-local" value={formData.fecha_fin || ''} onChange={e => setFormData({...formData, fecha_fin: e.target.value})} />
                 </div>
               </div>
               
@@ -180,7 +180,7 @@ export default function PermisosTrabajoPage() {
               {editingId && (
                 <div className="space-y-2 border-t pt-4 mt-2">
                   <Label>Estado de Aprobación</Label>
-                  <Select required value={formData.estado} onValueChange={(v) => setFormData({...formData, estado: v})}>
+                  <Select required value={formData.estado || ''} onValueChange={(v) => setFormData({...formData, estado: v})}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="BORRADOR">Borrador</SelectItem>
