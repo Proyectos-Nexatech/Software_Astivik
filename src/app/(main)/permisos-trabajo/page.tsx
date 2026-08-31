@@ -14,11 +14,13 @@ import { createClient } from "@/utils/supabase/client";
 export default function PermisosTrabajoPage() {
   const [permisos, setPermisos] = useState<any[]>([]);
   const [proyectos, setProyectos] = useState<any[]>([]);
+  const [trabajadores, setTrabajadores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
 
   const initialForm = {
     proyecto_id: '',
@@ -26,7 +28,12 @@ export default function PermisosTrabajoPage() {
     solicitante_nombre: '',
     fecha_inicio: '',
     fecha_fin: '',
-    estado: 'SOLICITADO'
+    estado: 'SOLICITADO',
+    hora_firma: '',
+    documento_url: '',
+    personal_involucrado: [] as string[],
+    numero_permiso: '',
+    orden_compra: ''
   };
 
   const [formData, setFormData] = useState(initialForm);
@@ -44,24 +51,34 @@ export default function PermisosTrabajoPage() {
     const { data: projData } = await supabase.from('proyectos').select('id, nombre');
     if (projData) setProyectos(projData);
 
+    const { data: trabData } = await supabase.from('trabajadores').select('id, nombre, empresa').order('nombre');
+    if (trabData) setTrabajadores(trabData);
+
     setLoading(false);
   };
 
   const handleOpenCreate = () => {
     setEditingId(null);
+    setFileToUpload(null);
     setFormData(initialForm);
     setIsDialogOpen(true);
   };
 
   const handleOpenEdit = (pt: any) => {
     setEditingId(pt.id);
+    setFileToUpload(null);
     setFormData({
       proyecto_id: pt.proyecto_id || '',
       tipo: pt.tipo,
       solicitante_nombre: pt.solicitante_nombre,
       fecha_inicio: pt.fecha_inicio ? new Date(pt.fecha_inicio).toISOString().slice(0, 16) : '',
       fecha_fin: pt.fecha_fin ? new Date(pt.fecha_fin).toISOString().slice(0, 16) : '',
-      estado: pt.estado
+      estado: pt.estado || 'SOLICITADO',
+      hora_firma: pt.hora_firma || '',
+      documento_url: pt.documento_url || '',
+      personal_involucrado: Array.isArray(pt.personal_involucrado) ? pt.personal_involucrado : [],
+      numero_permiso: pt.numero_permiso || '',
+      orden_compra: pt.orden_compra || ''
     });
     setIsDialogOpen(true);
   };
@@ -70,29 +87,51 @@ export default function PermisosTrabajoPage() {
     e.preventDefault();
     setIsSubmitting(true);
     
+    let docUrl = formData.documento_url;
+
+    if (fileToUpload) {
+      const ext = fileToUpload.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random()}.${ext}`;
+      const { data, error } = await supabase.storage.from('documentos_hse').upload(fileName, fileToUpload);
+      if (!error && data) {
+        docUrl = supabase.storage.from('documentos_hse').getPublicUrl(fileName).data.publicUrl;
+      }
+    }
+
     const payload = {
-      ...formData,
+      proyecto_id: formData.proyecto_id,
+      tipo: formData.tipo,
+      solicitante_nombre: formData.solicitante_nombre,
       fecha_inicio: formData.fecha_inicio ? new Date(formData.fecha_inicio).toISOString() : null,
       fecha_fin: formData.fecha_fin ? new Date(formData.fecha_fin).toISOString() : null,
+      estado: formData.estado,
+      hora_firma: formData.hora_firma || null,
+      documento_url: docUrl,
+      personal_involucrado: formData.personal_involucrado,
+      numero_permiso: formData.numero_permiso || null,
+      orden_compra: formData.orden_compra || null
     };
 
-    let error;
     if (editingId) {
-      const { error: updateError } = await supabase.from('permisos_trabajo').update(payload).eq('id', editingId);
-      error = updateError;
+      await supabase.from('permisos_trabajo').update(payload).eq('id', editingId);
     } else {
-      const { error: insertError } = await supabase.from('permisos_trabajo').insert([payload]);
-      error = insertError;
+      await supabase.from('permisos_trabajo').insert([payload]);
     }
 
+    setIsDialogOpen(false);
+    fetchData();
     setIsSubmitting(false);
+  };
 
-    if (!error) {
-      setIsDialogOpen(false);
-      fetchData();
-    } else {
-      alert("Error al guardar: " + error.message);
-    }
+  const toggleTrabajador = (id: string) => {
+    setFormData(prev => {
+      const isSelected = prev.personal_involucrado.includes(id);
+      if (isSelected) {
+        return { ...prev, personal_involucrado: prev.personal_involucrado.filter(tId => tId !== id) };
+      } else {
+        return { ...prev, personal_involucrado: [...prev.personal_involucrado, id] };
+      }
+    });
   };
 
   const handleDelete = async (id: string) => {
@@ -176,6 +215,44 @@ export default function PermisosTrabajoPage() {
                 </div>
               </div>
               
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Número de Permiso</Label>
+                  <Input placeholder="Ej. PT-001" value={formData.numero_permiso || ''} onChange={e => setFormData({...formData, numero_permiso: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Orden de Compra</Label>
+                  <Input placeholder="Opcional" value={formData.orden_compra || ''} onChange={e => setFormData({...formData, orden_compra: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Hora de Firma</Label>
+                  <Input type="time" value={formData.hora_firma || ''} onChange={e => setFormData({...formData, hora_firma: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Subir Documento (PDF)</Label>
+                  <Input type="file" accept=".pdf" onChange={e => setFileToUpload(e.target.files?.[0] || null)} />
+                  {formData.documento_url && !fileToUpload && (
+                    <a href={formData.documento_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline mt-1 block">Ver documento actual</a>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                 <Label>Personal Involucrado</Label>
+                 <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1 bg-white">
+                   {trabajadores.map(t => (
+                      <label key={t.id} className="flex items-center space-x-2 text-sm cursor-pointer hover:bg-slate-50 p-1 rounded">
+                         <input type="checkbox" checked={formData.personal_involucrado.includes(t.id)} onChange={() => toggleTrabajador(t.id)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-600" />
+                         <span>{t.nombre} <span className="text-slate-400">({t.empresa})</span></span>
+                      </label>
+                   ))}
+                   {trabajadores.length === 0 && <p className="text-xs text-slate-400 italic">No hay trabajadores registrados.</p>}
+                 </div>
+              </div>
+              
               {/* Solo mostrar Estado si se esta editando */}
               {editingId && (
                 <div className="space-y-2 border-t pt-4 mt-2">
@@ -214,16 +291,19 @@ export default function PermisosTrabajoPage() {
           <TableHeader className="bg-slate-50">
             <TableRow>
               <TableHead>ID / Tipo</TableHead>
+              <TableHead>Nº Permiso</TableHead>
               <TableHead>Proyecto</TableHead>
               <TableHead>Solicitante</TableHead>
-              <TableHead>Inicio Programado</TableHead>
+              <TableHead>Fechas</TableHead>
+              <TableHead>Hora Firma</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Docs</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-10 text-slate-500">Cargando...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-10 text-slate-500">Cargando...</TableCell></TableRow>
             ) : filteredPermisos.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-10">
@@ -240,10 +320,23 @@ export default function PermisosTrabajoPage() {
                       <span className="text-xs text-slate-400 font-mono">{pt.id.split('-')[0]}</span>
                     </div>
                   </TableCell>
-                  <TableCell>{pt.proyectos?.nombre || 'N/A'}</TableCell>
+                  <TableCell>
+                    {pt.numero_permiso ? <span className="font-semibold">{pt.numero_permiso}</span> : <span className="text-slate-400 italic">N/A</span>}
+                  </TableCell>
+                  <TableCell>{pt.proyectos?.nombre}</TableCell>
                   <TableCell>{pt.solicitante_nombre}</TableCell>
-                  <TableCell>{pt.fecha_inicio ? new Date(pt.fecha_inicio).toLocaleString() : 'N/A'}</TableCell>
+                  <TableCell className="text-sm">
+                    {new Date(pt.fecha_inicio).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    {pt.hora_firma || '-'}
+                  </TableCell>
                   <TableCell>{getStatusBadge(pt.estado)}</TableCell>
+                  <TableCell>
+                    {pt.documento_url ? (
+                      <a href={pt.documento_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">PDF</a>
+                    ) : '-'}
+                  </TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(pt)} className="text-blue-600 hover:text-blue-800 hover:bg-blue-50">
                       <Edit2 className="w-4 h-4" />
