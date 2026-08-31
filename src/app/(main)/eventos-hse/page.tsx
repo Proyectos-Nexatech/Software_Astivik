@@ -13,6 +13,7 @@ import { createClient } from "@/utils/supabase/client";
 
 export default function EventosHsePage() {
   const [eventos, setEventos] = useState<any[]>([]);
+  const [trabajadores, setTrabajadores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -25,7 +26,9 @@ export default function EventosHsePage() {
     fecha_evento: '',
     lugar_exacto: '',
     descripcion: '',
-    estado_investigacion: 'ABIERTA'
+    estado_investigacion: 'ABIERTA',
+    trabajador_id: '',
+    empresa: ''
   };
 
   const [formData, setFormData] = useState(initialForm);
@@ -37,8 +40,12 @@ export default function EventosHsePage() {
 
   const fetchEventos = async () => {
     setLoading(true);
-    const { data } = await supabase.from('hse_eventos').select('*').order('fecha_evento', { ascending: false });
-    if (data) setEventos(data);
+    const { data: eData } = await supabase.from('hse_eventos').select('*, trabajadores(nombre, empresa)').order('fecha_evento', { ascending: false });
+    if (eData) setEventos(eData);
+
+    const { data: tData } = await supabase.from('trabajadores').select('id, nombre, empresa').order('nombre');
+    if (tData) setTrabajadores(tData);
+
     setLoading(false);
   };
 
@@ -54,9 +61,11 @@ export default function EventosHsePage() {
       tipo_evento: ev.tipo_evento,
       severidad: ev.severidad,
       fecha_evento: ev.fecha_evento ? new Date(ev.fecha_evento).toISOString().slice(0, 16) : '',
-      lugar_exacto: ev.lugar_exacto,
-      descripcion: ev.descripcion,
-      estado_investigacion: ev.estado_investigacion || 'ABIERTA'
+      lugar_exacto: ev.lugar_exacto || '',
+      descripcion: ev.descripcion || '',
+      estado_investigacion: ev.estado_investigacion || 'ABIERTA',
+      trabajador_id: ev.trabajador_id || '',
+      empresa: ev.empresa || ''
     });
     setIsDialogOpen(true);
   };
@@ -65,8 +74,11 @@ export default function EventosHsePage() {
     e.preventDefault();
     setIsSubmitting(true);
     
+    const selectedWorker = trabajadores.find(t => t.id === formData.trabajador_id);
+    
     const payload = {
       ...formData,
+      empresa: selectedWorker ? selectedWorker.empresa : formData.empresa,
       fecha_evento: formData.fecha_evento ? new Date(formData.fecha_evento).toISOString() : null,
     };
 
@@ -159,6 +171,36 @@ export default function EventosHsePage() {
                 <Input type="datetime-local" required value={formData.fecha_evento || ''} onChange={e => setFormData({...formData, fecha_evento: e.target.value})} />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Trabajador Afectado</Label>
+                  <Select required value={formData.trabajador_id || ''} onValueChange={(v) => setFormData({...formData, trabajador_id: v || ''})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar trabajador...">
+                        {formData.trabajador_id 
+                          ? trabajadores.find(t => t.id === formData.trabajador_id)?.nombre 
+                          : "Seleccionar..."}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {trabajadores.map(t => (
+                        <SelectItem key={t.id} value={t.id}>{t.nombre} ({t.empresa})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Empresa / Contratista</Label>
+                  <Input 
+                    readOnly 
+                    className="bg-slate-100 text-slate-900 font-medium border-slate-200 cursor-not-allowed" 
+                    value={formData.trabajador_id ? (trabajadores.find(t => t.id === formData.trabajador_id)?.empresa || 'Sin empresa') : (formData.empresa || '')} 
+                    placeholder="Se llena automáticamente..." 
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label>Lugar Exacto</Label>
                 <Input required placeholder="Ej. Taller 1, Dique Seco..." value={formData.lugar_exacto || ''} onChange={e => setFormData({...formData, lugar_exacto: e.target.value})} />
@@ -206,6 +248,7 @@ export default function EventosHsePage() {
             <TableRow>
               <TableHead>Fecha</TableHead>
               <TableHead>Clasificación</TableHead>
+              <TableHead>Trabajador Afectado</TableHead>
               <TableHead>Lugar Exacto</TableHead>
               <TableHead>Severidad</TableHead>
               <TableHead>Investigación</TableHead>
@@ -232,6 +275,16 @@ export default function EventosHsePage() {
                     <span className={`font-semibold ${ev.tipo_evento === 'ACCIDENTE' ? 'text-red-600' : 'text-orange-500'}`}>
                       {ev.tipo_evento}
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    {ev.trabajadores?.nombre ? (
+                      <div>
+                        <p className="font-semibold">{ev.trabajadores.nombre}</p>
+                        <p className="text-xs text-slate-500">{ev.empresa}</p>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 italic">No asignado</span>
+                    )}
                   </TableCell>
                   <TableCell>{ev.lugar_exacto}</TableCell>
                   <TableCell>{getSeveridadBadge(ev.severidad)}</TableCell>
