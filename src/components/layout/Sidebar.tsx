@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutDashboard, Users, Settings, FileCheck, Building2, ShieldCheck, Key, UserCircle, ChevronDown, ChevronRight, Briefcase } from 'lucide-react';
+import { Home, LayoutDashboard, Users, Settings, FileCheck, Building2, ShieldCheck, Key, UserCircle, ChevronDown, ChevronRight, Briefcase, HardHat, AlertTriangle, Notebook, UserX } from 'lucide-react';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -76,7 +76,20 @@ export function Sidebar() {
             <Link href="/reportes" title="Reportes de Cumplimiento" className={getLinkClasses(pathname.startsWith('/reportes'), true)}>
               <FileCheck className="w-5 h-5 md:w-4 md:h-4 shrink-0 opacity-0 md:hidden" /> <span className="hidden md:inline relative before:content-[''] before:absolute before:-left-3 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-1.5 before:bg-slate-500 before:rounded-full">Reportes Cumplimiento</span>
             </Link>
+            <Link href="/permisos-trabajo" title="Permisos de Trabajo" className={getLinkClasses(pathname.startsWith('/permisos-trabajo'), true)}>
+              <HardHat className="w-5 h-5 md:w-4 md:h-4 shrink-0 opacity-0 md:hidden" /> <span className="hidden md:inline relative before:content-[''] before:absolute before:-left-3 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-1.5 before:bg-slate-500 before:rounded-full">Permisos de Trabajo</span>
+            </Link>
+            <Link href="/eventos-hse" title="Incidentes y Accidentes" className={getLinkClasses(pathname.startsWith('/eventos-hse'), true)}>
+              <AlertTriangle className="w-5 h-5 md:w-4 md:h-4 shrink-0 opacity-0 md:hidden" /> <span className="hidden md:inline relative before:content-[''] before:absolute before:-left-3 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-1.5 before:bg-slate-500 before:rounded-full">Incidentes y Accidentes</span>
+            </Link>
+            <Link href="/novedades" title="Novedades" className={getLinkClasses(pathname.startsWith('/novedades'), true)}>
+              <Notebook className="w-5 h-5 md:w-4 md:h-4 shrink-0 opacity-0 md:hidden" /> <span className="hidden md:inline relative before:content-[''] before:absolute before:-left-3 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-1.5 before:bg-slate-500 before:rounded-full">Novedades</span>
+            </Link>
+            <Link href="/inasistencias" title="Inasistencias" className={getLinkClasses(pathname.startsWith('/inasistencias'), true)}>
+              <UserX className="w-5 h-5 md:w-4 md:h-4 shrink-0 opacity-0 md:hidden" /> <span className="hidden md:inline relative before:content-[''] before:absolute before:-left-3 before:top-1/2 before:-translate-y-1/2 before:w-1.5 before:h-1.5 before:bg-slate-500 before:rounded-full">Inasistencias</span>
+            </Link>
           </div>
+
         </div>
 
         {/* GRUPO: CONTROL DE ACCESO */}
