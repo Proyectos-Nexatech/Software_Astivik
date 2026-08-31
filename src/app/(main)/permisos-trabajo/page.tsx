@@ -21,6 +21,8 @@ export default function PermisosTrabajoPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  const [selectedEmpresa, setSelectedEmpresa] = useState<string>("Todos los Registros");
+  const [selectedSupervisor, setSelectedSupervisor] = useState<string>("Todos los Registros");
 
   const initialForm = {
     proyecto_id: '',
@@ -33,7 +35,9 @@ export default function PermisosTrabajoPage() {
     documento_url: '',
     personal_involucrado: [] as string[],
     numero_permiso: '',
-    orden_compra: ''
+    orden_compra: '',
+    empresa: '',
+    supervisor_hse: ''
   };
 
   const [formData, setFormData] = useState(initialForm);
@@ -78,7 +82,9 @@ export default function PermisosTrabajoPage() {
       documento_url: pt.documento_url || '',
       personal_involucrado: Array.isArray(pt.personal_involucrado) ? pt.personal_involucrado : [],
       numero_permiso: pt.numero_permiso || '',
-      orden_compra: pt.orden_compra || ''
+      orden_compra: pt.orden_compra || '',
+      empresa: pt.empresa || '',
+      supervisor_hse: pt.supervisor_hse || ''
     });
     setIsDialogOpen(true);
   };
@@ -109,7 +115,9 @@ export default function PermisosTrabajoPage() {
       documento_url: docUrl,
       personal_involucrado: formData.personal_involucrado,
       numero_permiso: formData.numero_permiso || null,
-      orden_compra: formData.orden_compra || null
+      orden_compra: formData.orden_compra || null,
+      empresa: formData.empresa || null,
+      supervisor_hse: formData.supervisor_hse || null
     };
 
     if (editingId) {
@@ -149,10 +157,16 @@ export default function PermisosTrabajoPage() {
     }
   };
 
-  const filteredPermisos = permisos.filter(pt => 
-    pt.solicitante_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    pt.tipo?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPermisos = permisos.filter(pt => {
+    const matchesSearch = pt.solicitante_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || pt.tipo?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesEmpresa = selectedEmpresa === "Todos los Registros" || pt.empresa === selectedEmpresa;
+    const matchesSupervisor = selectedSupervisor === "Todos los Registros" || pt.supervisor_hse === selectedSupervisor;
+    return matchesSearch && matchesEmpresa && matchesSupervisor;
+  });
+
+  const uniqueEmpresas = Array.from(new Set(permisos.map(p => p.empresa).filter(Boolean)));
+  const uniqueSupervisores = Array.from(new Set(permisos.map(p => p.supervisor_hse).filter(Boolean)));
+
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -202,6 +216,17 @@ export default function PermisosTrabajoPage() {
                 <div className="space-y-2">
                   <Label>Solicitante</Label>
                   <Input required placeholder="Nombre del solicitante" value={formData.solicitante_nombre || ''} onChange={e => setFormData({...formData, solicitante_nombre: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Empresa</Label>
+                  <Input placeholder="Nombre de la empresa" value={formData.empresa || ''} onChange={e => setFormData({...formData, empresa: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Supervisor HSE</Label>
+                  <Input placeholder="Nombre del supervisor" value={formData.supervisor_hse || ''} onChange={e => setFormData({...formData, supervisor_hse: e.target.value})} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -279,12 +304,46 @@ export default function PermisosTrabajoPage() {
         </Dialog>
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-100">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-          <Input placeholder="Buscar por solicitante o tipo..." className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Sidebar Filters */}
+        <div className="w-full md:w-64 shrink-0 space-y-6">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Empresa</h3>
+            </div>
+            <div className="space-y-2">
+              <button onClick={() => setSelectedEmpresa('Todos los Registros')} className={`w-full text-left px-3 py-2 rounded-md text-sm ${selectedEmpresa === 'Todos los Registros' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}>Todos los Registros</button>
+              {uniqueEmpresas.map(emp => (
+                <button key={emp as string} onClick={() => setSelectedEmpresa(emp as string)} className={`w-full text-left px-3 py-2 rounded-md text-sm flex justify-between items-center ${selectedEmpresa === emp ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  <span>{emp as string}</span><span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs">{permisos.filter(p => p.empresa === emp).length}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Supervisores HSE</h3>
+            </div>
+            <div className="space-y-2">
+              <button onClick={() => setSelectedSupervisor('Todos los Registros')} className={`w-full text-left px-3 py-2 rounded-md text-sm ${selectedSupervisor === 'Todos los Registros' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}>Todos los Registros</button>
+              {uniqueSupervisores.map(sup => (
+                <button key={sup as string} onClick={() => setSelectedSupervisor(sup as string)} className={`w-full text-left px-3 py-2 rounded-md text-sm flex justify-between items-center ${selectedSupervisor === sup ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  <span>{sup as string}</span><span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs">{permisos.filter(p => p.supervisor_hse === sup).length}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
+
+        {/* Main Content */}
+        <div className="flex-1 space-y-6 overflow-hidden">
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-100">
+            <div className="relative w-full max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <Input placeholder="Buscar por solicitante o tipo..." className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+          </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
         <Table>
@@ -350,6 +409,8 @@ export default function PermisosTrabajoPage() {
             )}
           </TableBody>
         </Table>
+      </div>
+      </div>
       </div>
     </div>
   );

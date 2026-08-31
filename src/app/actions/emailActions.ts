@@ -6,19 +6,21 @@ const apiKey = process.env.RESEND_API_KEY || process.env.resend_api_key;
 const resend = new Resend(apiKey || "re_dummy_key");
 
 export async function notificarHseDocumentoSubido(
-  contratistaNombre: string, 
-  trabajadorNombre: string, 
-  tipoDocumento: string
+  contratistaNombre: string,
+  trabajadorNombre: string,
+  tipoDocumento: string,
 ) {
   if (!apiKey) {
-    console.log(`[SIMULACIÓN EMAIL] 📧 Correo a HSE: El contratista ${contratistaNombre} ha subido el documento [${tipoDocumento.toUpperCase()}] para ${trabajadorNombre}. Pendiente de revisión.`);
+    console.log(
+      `[SIMULACIÓN EMAIL] 📧 Correo a HSE: El contratista ${contratistaNombre} ha subido el documento [${tipoDocumento.toUpperCase()}] para ${trabajadorNombre}. Pendiente de revisión.`,
+    );
     return { success: true, simulated: true };
   }
 
   try {
     const data = await resend.emails.send({
-      from: 'Sistema HSE <notificaciones@nexatech.com.co>',
-      to: ['proyectos@nexatech.com.co'], // Idealmente configurable o extraído de la BD
+      from: "Sistema HSE <notificaciones@nexatech.com.co>",
+      to: ["proyectos@nexatech.com.co"], // Idealmente configurable o extraído de la BD
       subject: `NUEVO DOCUMENTO - Revisión Pendiente (${contratistaNombre})`,
       html: `
         <h2>Nuevo Documento HSE Subido</h2>
@@ -40,16 +42,18 @@ export async function notificarHseDocumentoSubido(
 export async function notificarContratistaDocumentoAprobado(
   emailContratista: string,
   trabajadorNombre: string,
-  tipoDocumento: string
+  tipoDocumento: string,
 ) {
   if (!apiKey) {
-    console.log(`[SIMULACIÓN EMAIL] 📧 Correo a ${emailContratista}: Su documento [${tipoDocumento.toUpperCase()}] para ${trabajadorNombre} ha sido APROBADO por Astivik.`);
+    console.log(
+      `[SIMULACIÓN EMAIL] 📧 Correo a ${emailContratista}: Su documento [${tipoDocumento.toUpperCase()}] para ${trabajadorNombre} ha sido APROBADO por Astivik.`,
+    );
     return { success: true, simulated: true };
   }
 
   try {
     const data = await resend.emails.send({
-      from: 'Sistema HSE <notificaciones@nexatech.com.co>',
+      from: "Sistema HSE <notificaciones@nexatech.com.co>",
       to: [emailContratista],
       subject: `DOCUMENTO APROBADO - ${trabajadorNombre}`,
       html: `

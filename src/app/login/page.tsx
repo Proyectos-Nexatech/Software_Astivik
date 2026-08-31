@@ -4,7 +4,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Lock, Mail, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
@@ -21,7 +28,7 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg("");
-    
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
@@ -65,51 +72,66 @@ export default function LoginPage() {
               <Label htmlFor="email">Correo Electrónico</Label>
               <div className="relative">
                 <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="usuario@astillero.com" 
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="usuario@astillero.com"
                   className="pl-9"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  required 
+                  required
                 />
               </div>
             </div>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <Label htmlFor="password">Contraseña</Label>
-                <a href="#" className="text-xs font-semibold text-blue-600 hover:text-blue-800">
+                <a
+                  href="#"
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-800"
+                >
                   ¿Olvidaste tu contraseña?
                 </a>
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <Input 
-                  id="password" 
-                  type="password" 
+                <Input
+                  id="password"
+                  type="password"
                   className="pl-9"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  required 
+                  required
                 />
               </div>
             </div>
-            
+
             {errorMsg && (
               <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm font-medium">
                 {errorMsg}
               </div>
             )}
 
-            <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white mt-6 h-11" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white mt-6 h-11"
+              disabled={isLoading}
+            >
               {isLoading ? "Verificando..." : "Acceder al Dashboard"}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex flex-col gap-4 text-center border-t border-slate-100 pt-6 mt-2">
           <p className="text-xs text-slate-500">
-            Al iniciar sesión, aceptas nuestras <a href="#" className="underline">Políticas de Privacidad</a> y <a href="#" className="underline">Términos de Servicio</a>.
+            Al iniciar sesión, aceptas nuestras{" "}
+            <a href="#" className="underline">
+              Políticas de Privacidad
+            </a>{" "}
+            y{" "}
+            <a href="#" className="underline">
+              Términos de Servicio
+            </a>
+            .
           </p>
           <p className="text-xs text-slate-400 font-mono">
             v3.0.0 (Astivik Build)
