@@ -132,7 +132,7 @@ export default function EventosHsePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Tipo de Evento</Label>
-                  <Select required value={formData.tipo_evento || ''} onValueChange={(v) => setFormData({...formData, tipo_evento: v})}>
+                  <Select required value={formData.tipo_evento || ''} onValueChange={(v) => setFormData({...formData, tipo_evento: v || ''})}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="INCIDENTE">Incidente</SelectItem>
@@ -142,7 +142,7 @@ export default function EventosHsePage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Severidad</Label>
-                  <Select required value={formData.severidad || ''} onValueChange={(v) => setFormData({...formData, severidad: v})}>
+                  <Select required value={formData.severidad || ''} onValueChange={(v) => setFormData({...formData, severidad: v || ''})}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="BAJA">Baja</SelectItem>
@@ -172,7 +172,7 @@ export default function EventosHsePage() {
               {editingId && (
                 <div className="space-y-2 border-t pt-4 mt-2">
                   <Label>Estado de la Investigación</Label>
-                  <Select required value={formData.estado_investigacion || ''} onValueChange={(v) => setFormData({...formData, estado_investigacion: v})}>
+                  <Select required value={formData.estado_investigacion || ''} onValueChange={(v) => setFormData({...formData, estado_investigacion: v || ''})}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ABIERTA">Abierta</SelectItem>

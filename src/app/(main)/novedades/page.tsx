@@ -139,7 +139,7 @@ export default function NovedadesPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Empresa / Contratista</Label>
-                  <Select required value={formData.empresa || ''} onValueChange={(v) => setFormData({...formData, empresa: v})}>
+                  <Select required value={formData.empresa || ''} onValueChange={(v) => setFormData({...formData, empresa: v || ''})}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar empresa..." /></SelectTrigger>
                     <SelectContent>
                       {empresas.map((emp, idx) => (
@@ -151,7 +151,7 @@ export default function NovedadesPage() {
               </div>
               <div className="space-y-2">
                 <Label>Tipo de Novedad</Label>
-                <Select required value={formData.tipo_novedad || ''} onValueChange={(v) => setFormData({...formData, tipo_novedad: v})}>
+                <Select required value={formData.tipo_novedad || ''} onValueChange={(v) => setFormData({...formData, tipo_novedad: v || ''})}>
                   <SelectTrigger><SelectValue placeholder="Seleccionar tipo..." /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="CLIMA">Clima / Lluvia</SelectItem>

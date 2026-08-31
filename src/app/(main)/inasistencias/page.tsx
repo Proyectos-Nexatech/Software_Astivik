@@ -170,7 +170,7 @@ export default function InasistenciasPage() {
                 
                 <div className="space-y-2">
                   <Label>Trabajador</Label>
-                  <Select required value={formData.trabajador_id || ''} onValueChange={(v) => setFormData({...formData, trabajador_id: v})}>
+                  <Select required value={formData.trabajador_id || ''} onValueChange={(v) => setFormData({...formData, trabajador_id: v || ''})}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar trabajador...">
                         {formData.trabajador_id 
@@ -203,7 +203,7 @@ export default function InasistenciasPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>¿Es justificada?</Label>
-                    <Select required value={formData.es_justificada || ''} onValueChange={(v) => setFormData({...formData, es_justificada: v})}>
+                    <Select required value={formData.es_justificada || ''} onValueChange={(v) => setFormData({...formData, es_justificada: v || ''})}>
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar...">
                            {formData.es_justificada === 'true' ? 'Sí (Con excusa médica, etc)' : 'No (Falta injustificada)'}
